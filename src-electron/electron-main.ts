@@ -1,4 +1,4 @@
-import { BrowserWindow, app } from "electron";
+import { BrowserWindow, app, ipcMain } from "electron";
 import path from "node:path";
 import os from "node:os";
 import {
@@ -15,9 +15,14 @@ async function createWindow() {
    */
   const mainWindow = new BrowserWindow({
     icon: resolveElectronAssetsPath("icons/icon.png"), // Windows and Linux
-    width: 1000,
-    height: 600,
+    width: 1280,
+    height: 800,
+    minWidth: 1120,
+    minHeight: 700,
+    backgroundColor: "#0b0f18",
     useContentSize: true,
+    frame: false,
+    autoHideMenuBar: true,
     webPreferences: {
       contextIsolation: true,
       // https://v2.quasar.dev/quasar-cli-vite/developing-electron-apps/electron-preload-script
@@ -44,6 +49,18 @@ async function createWindow() {
 
 void app.whenReady().then(() => {
   registerQuasarRuntime();
+  ipcMain.handle("window:minimize", () => BrowserWindow.getFocusedWindow()?.minimize());
+  ipcMain.handle("window:toggle-maximize", () => {
+    const focusedWindow = BrowserWindow.getFocusedWindow();
+    if (!focusedWindow) return;
+    if (focusedWindow.isMaximized()) {
+      focusedWindow.unmaximize();
+    } else {
+      focusedWindow.maximize();
+    }
+  });
+  ipcMain.handle("window:close", () => BrowserWindow.getFocusedWindow()?.close());
+
   void createWindow();
 
   app.on("activate", () => {
