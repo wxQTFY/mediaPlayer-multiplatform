@@ -7,6 +7,27 @@ export interface MediaItem {
   sourceType: 'local' | 'network';
   format: 'mp4' | 'hls' | 'dash' | 'unknown';
   durationLabel?: string;
+  fileName?: string;
+  qualityLabel?: string;
+  locationLabel?: string;
+  downloadable?: boolean;
+  createdAt: number;
+  posterTone?: 'teal' | 'gold' | 'blue';
+}
+
+export type PlaybackStatus = 'idle' | 'ready' | 'playing' | 'paused' | 'loading' | 'ended' | 'error';
+
+export type DownloadStatus = 'downloading' | 'paused' | 'finished';
+
+export interface DownloadItem {
+  id: string;
+  title: string;
+  status: DownloadStatus;
+  progress: number;
+  speedLabel?: string;
+  sizeLabel?: string;
+  targetLabel: string;
+  finishedAt?: string;
 }
 
 export interface PlatformCapability {

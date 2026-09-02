@@ -12,7 +12,7 @@
         />
 
         <q-toolbar-title>
-          mediaPlayer 多端版
+          影音播放器
         </q-toolbar-title>
 
         <q-chip
@@ -21,7 +21,7 @@
           color="white"
           text-color="primary"
         >
-          第一阶段骨架
+          P001 多端版
         </q-chip>
       </q-toolbar>
     </q-header>
