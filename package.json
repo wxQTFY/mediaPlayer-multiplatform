@@ -28,6 +28,7 @@
     "@quasar/app-vite": "^3.5.0",
     "@types/node": "^22.19.11",
     "autoprefixer": "^10.4.27",
+    "electron": "^43.4.0",
     "postcss": "^8.5.8",
     "typescript": "^6.0.0",
     "vue-tsc": "^3.3.3"
