@@ -16,10 +16,12 @@ import {
   Minus,
   MoreFilled,
   Plus,
+  Platform,
   RefreshLeft,
   RefreshRight,
   Search,
   Sort,
+  Star,
   VideoPause
 } from '@element-plus/icons-vue';
 import ArtPlayer from '@/app-ui/components/Artplayer/ArtPlayer.vue';
@@ -843,16 +845,26 @@ const scanState = reactive({
                   <button class="play" type="button" aria-label="播放或暂停"><el-icon><VideoPause /></el-icon></button>
                   <button type="button" aria-label="快进十秒"><el-icon><RefreshRight /></el-icon></button>
                 </div>
+
+                <div class="mobile-player-bottom">
+                  <div class="mobile-progress-meta"><span>12:48</span><span>29:32</span></div>
+                  <div class="mobile-player-progress"><div></div></div>
+                </div>
               </div>
 
               <div class="mobile-player-info">
                 <div class="download-state">{{ downloadStateText }}</div>
                 <h3>{{ currentVideo?.videoName || selectedVideo?.title || '网络视频' }}</h3>
                 <p>播放页浮层使用深色半透明底和文字阴影，保证在亮色、暗色、复杂画面下都可读。</p>
+                <div class="mobile-player-actions">
+                  <button type="button"><el-icon><Star /></el-icon><span>喜欢</span></button>
+                  <button type="button"><el-icon><Platform /></el-icon><span>投屏</span></button>
+                  <button type="button"><el-icon><FullScreen /></el-icon><span>全屏</span></button>
+                </div>
               </div>
         </section>
 
-        <nav v-if="!showMobileDeleteBar && mobilePage !== 'player'" class="bottom-nav" aria-label="底部导航">
+        <nav v-if="!showMobileDeleteBar" class="bottom-nav" aria-label="底部导航">
               <button type="button" :class="{ active: mobilePage === 'home' }" @click="setMobilePage('home')">
                 <el-icon><House /></el-icon><span>首页</span>
               </button>
@@ -1899,20 +1911,34 @@ button {
 }
 
 .mobile-player-page {
-  height: 100%;
+  position: relative;
+  height: calc(100% - env(safe-area-inset-bottom, 0px) - 64px);
+  min-height: 0;
   overflow: auto;
-  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 24px);
   background: #11141a;
 }
 
 .mobile-player-hero {
   position: relative;
-  height: 56%;
-  min-height: 380px;
+  height: 46%;
+  min-height: 292px;
   overflow: hidden;
   background:
-    radial-gradient(circle at 50% 30%, rgb(66 215 202 / 30%), transparent 36%),
-    linear-gradient(135deg, #1267c9, #043473);
+    linear-gradient(180deg, rgb(2 6 23 / 88%), transparent 30%, transparent 55%, rgb(2 6 23 / 92%)),
+    linear-gradient(125deg, #2131a2 0%, #202898 30%, #14245a 58%, #0f1731 100%);
+}
+
+.mobile-player-hero::before {
+  position: absolute;
+  right: -20%;
+  bottom: 17%;
+  width: 82%;
+  height: 32%;
+  content: "";
+  background: rgb(255 255 255 / 24%);
+  border-radius: 999px;
+  filter: blur(28px);
+  transform: rotate(-12deg);
 }
 
 .mobile-player-hero :deep(.artplayer-app) {
@@ -1926,20 +1952,27 @@ button {
   right: 12px;
   left: 12px;
   z-index: 30;
+  display: flex;
+  align-items: center;
   justify-content: space-between;
-  gap: 10px;
-  padding: 8px;
-  background: rgb(0 0 0 / 38%);
-  border-radius: 14px;
-  backdrop-filter: blur(8px);
+  gap: 9px;
+  padding: 6px;
+  color: white;
+  text-shadow: 0 1px 8px rgb(0 0 0 / 72%);
+  background: linear-gradient(90deg, rgb(2 6 23 / 76%), rgb(2 6 23 / 36%));
+  border-radius: 18px;
+  backdrop-filter: blur(16px);
 }
 
 .readable-bar button {
-  width: 34px;
-  height: 34px;
+  flex: 0 0 auto;
+  width: 36px;
+  height: 36px;
   color: white;
-  background: rgb(255 255 255 / 12%);
-  border-radius: 10px;
+  background: rgb(2 6 23 / 54%);
+  border: 1px solid rgb(255 255 255 / 18%);
+  border-radius: 50%;
+  backdrop-filter: blur(16px);
 }
 
 .readable-bar span {
@@ -1949,12 +1982,15 @@ button {
 }
 
 .readable-bar em {
-  color: #cbd5e1;
+  color: rgb(248 250 252 / 76%);
   font-size: 11px;
   font-style: normal;
 }
 
 .readable-bar strong {
+  color: white;
+  font-size: 13px;
+  font-weight: 500;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -1962,22 +1998,33 @@ button {
 
 .mobile-download-float {
   position: absolute;
-  top: 86px;
-  right: 16px;
+  top: calc(env(safe-area-inset-top, 0px) + 68px);
+  right: 18px;
   z-index: 32;
   display: grid;
-  place-items: center;
-  gap: 4px;
-  width: 58px;
-  height: 58px;
+  gap: 5px;
+  justify-items: center;
+  width: auto;
+  height: auto;
   color: white;
-  background: rgb(0 0 0 / 42%);
+  text-shadow: 0 1px 8px rgb(0 0 0 / 75%);
+  background: transparent;
   border: 0;
-  border-radius: 16px;
 }
 
 .mobile-download-float span {
-  font-size: 11px;
+  font-size: 10px;
+}
+
+.mobile-download-float .el-icon {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  background: rgb(2 6 23 / 54%);
+  border: 1px solid rgb(255 255 255 / 18%);
+  border-radius: 50%;
+  backdrop-filter: blur(16px);
 }
 
 .mock-player-controls {
@@ -1986,45 +2033,129 @@ button {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 18px;
+  gap: 20px;
+  z-index: 20;
 }
 
 .mock-player-controls button {
-  width: 48px;
-  height: 48px;
+  width: 36px;
+  height: 36px;
   color: white;
-  background: rgb(0 0 0 / 38%);
+  background: rgb(2 6 23 / 54%);
+  border: 1px solid rgb(255 255 255 / 18%);
   border-radius: 999px;
+  backdrop-filter: blur(16px);
 }
 
 .mock-player-controls .play {
   width: 64px;
   height: 64px;
+  color: #0f172a;
+  background: rgb(248 250 252 / 94%);
+  border-color: transparent;
+}
+
+.mobile-player-bottom {
+  position: absolute;
+  right: 16px;
+  bottom: 15px;
+  left: 16px;
+  z-index: 30;
+}
+
+.mobile-progress-meta {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 7px;
+  color: rgb(248 250 252 / 76%);
+  font-size: 11px;
+  text-shadow: 0 1px 8px rgb(0 0 0 / 75%);
+}
+
+.mobile-player-progress {
+  height: 5px;
+  overflow: hidden;
+  background: rgb(248 250 252 / 26%);
+  border-radius: 999px;
+}
+
+.mobile-player-progress div {
+  position: relative;
+  width: 46%;
+  height: 100%;
+  background: #42d7ca;
+  border-radius: inherit;
+}
+
+.mobile-player-progress div::after {
+  position: absolute;
+  top: 50%;
+  right: -5px;
+  width: 13px;
+  height: 13px;
+  content: "";
+  background: white;
+  border-radius: 50%;
+  box-shadow: 0 0 0 4px rgb(53 208 196 / 24%);
+  transform: translateY(-50%);
 }
 
 .mobile-player-info {
   display: grid;
-  gap: 12px;
-  padding: 18px 16px;
+  gap: 0;
+  min-height: 54%;
+  padding: 16px 16px calc(env(safe-area-inset-bottom, 0px) + 22px);
+  color: #f4f8fb;
+  background: #11141a;
+  border-radius: 22px 22px 0 0;
+  transform: translateY(-1px);
 }
 
 .download-state {
-  padding: 9px 12px;
-  color: #42d7ca;
-  font-size: 12px;
-  background: rgb(66 215 202 / 10%);
-  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  min-height: 28px;
+  margin-bottom: 12px;
+  padding: 0 9px;
+  color: #9ba7b5;
+  font-size: 11px;
+  background: #292e39;
+  border-radius: 999px;
 }
 
 .mobile-player-info h3 {
-  margin: 0;
+  margin: 0 0 6px;
   font-size: 18px;
+  font-weight: 500;
+  line-height: 1.2;
 }
 
 .mobile-player-info p {
   margin: 0;
   color: #9ba7b5;
   line-height: 1.6;
+}
+
+.mobile-player-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 15px;
+  overflow: hidden;
+}
+
+.mobile-player-actions button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  padding: 0 12px;
+  color: #f4f8fb;
+  white-space: nowrap;
+  background: #1d222b;
+  border: 1px solid rgb(255 255 255 / 10%);
+  border-radius: 999px;
+  gap: 6px;
 }
 
 .bottom-nav,
