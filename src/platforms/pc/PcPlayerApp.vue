@@ -1156,26 +1156,26 @@ button {
 }
 
 .desktop-main {
+  position: relative;
   flex: 1;
   min-width: 0;
   min-height: 0;
+  overflow: hidden;
+  background:
+    linear-gradient(180deg, rgb(7 10 18 / 18%), rgb(7 10 18 / 64%)),
+    radial-gradient(circle at 54% 42%, rgb(66 215 202 / 24%), transparent 18%),
+    linear-gradient(130deg, #2233a6 0%, #202997 30%, #14265d 58%, #101933 100%);
 }
 
 .desktop-video-view,
 .desktop-player-stage,
 .downloads-view {
-  width: 100%;
-  height: 100%;
+  position: absolute;
+  inset: 0;
 }
 
 .desktop-video-view {
-  display: grid;
-  place-items: center;
-  background:
-    linear-gradient(180deg, rgb(7 10 18 / 18%), rgb(7 10 18 / 64%)),
-    radial-gradient(circle at 54% 42%, rgb(66 215 202 / 24%), transparent 18%),
-    linear-gradient(130deg, #2233a6 0%, #202997 30%, #14265d 58%, #101933 100%);
-  position: relative;
+  z-index: 1;
   overflow: hidden;
 }
 
@@ -1204,13 +1204,16 @@ button {
 }
 
 .desktop-home-card {
-  position: relative;
+  position: absolute;
+  top: 48%;
+  left: 50%;
   z-index: 1;
   display: grid;
   place-items: center;
   gap: 18px;
-  width: min(720px, 84%);
-  transform: translateY(-22px);
+  width: min(620px, calc(100% - 64px));
+  text-align: center;
+  transform: translate(-50%, -50%);
 }
 
 .hero-mark {
@@ -1273,7 +1276,8 @@ button {
 }
 
 .desktop-player-stage {
-  position: relative;
+  position: absolute;
+  z-index: 3;
   background: #05070a;
 }
 
@@ -1306,6 +1310,7 @@ button {
   padding: 28px 34px;
   color: #172033;
   background: #f7fafc;
+  z-index: 4;
 }
 
 .download-tabs {
