@@ -22,7 +22,7 @@
  * https://www.electronjs.org/docs/latest/tutorial/tutorial-preload
  */
 
-import { contextBridge, ipcRenderer } from "electron";
+import { contextBridge, ipcRenderer, webUtils } from "electron";
 import { quasarRuntime } from "#q-app/electron/preload";
 
 /**
@@ -33,4 +33,32 @@ contextBridge.exposeInMainWorld("electronWindow", {
   minimize: () => ipcRenderer.invoke("window:minimize"),
   toggleMaximize: () => ipcRenderer.invoke("window:toggle-maximize"),
   close: () => ipcRenderer.invoke("window:close")
+});
+contextBridge.exposeInMainWorld("electronMedia", {
+  probeDownload: (url: string) => ipcRenderer.invoke("media:probe-download", url),
+  downloadUrl: (url: string, suggestedName?: string) =>
+    ipcRenderer.invoke("media:download-url", url, suggestedName)
+});
+contextBridge.exposeInMainWorld("api", {
+  app: {
+    versions: { ...process.versions }
+  },
+  window: {
+    minimize: () => ipcRenderer.invoke("window:minimize"),
+    maximize: () => ipcRenderer.invoke("window:toggle-maximize"),
+    close: () => ipcRenderer.invoke("window:close")
+  },
+  media: {
+    openFiles: (currentList?: unknown[]) => ipcRenderer.invoke("dialog:openFile", currentList ?? []),
+    getPathForFile: (file: File) => webUtils.getPathForFile(file),
+    importDroppedFiles: (filePaths: string[], currentList?: unknown[]) =>
+      ipcRenderer.invoke("dialog:importDroppedFiles", filePaths, currentList ?? []),
+    prepareFile: (id: string) => ipcRenderer.invoke("media:prepareFile", id),
+    prepareStream: (id: string, duration: number) =>
+      ipcRenderer.invoke("media:prepareStream", id, duration),
+    removeTranscodeCaches: (ids: string[]) => ipcRenderer.invoke("media:removeTranscodeCaches", ids),
+    probeDownload: (url: string) => ipcRenderer.invoke("media:probe-download", url),
+    downloadUrl: (url: string, suggestedName?: string) =>
+      ipcRenderer.invoke("media:download-url", url, suggestedName)
+  }
 });

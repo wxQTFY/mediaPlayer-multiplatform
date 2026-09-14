@@ -34,37 +34,54 @@ function isSingleFileVideo(url: string): boolean {
   return /\.(mp4|m4v|mov|webm|ogg|ogv)(\?|#|$)/i.test(url);
 }
 
+function isDownloadableNetworkUrl(url: string): boolean {
+  return /^https?:\/\//i.test(url) && (isSingleFileVideo(url) || /\.m3u8(\?|#|$)/i.test(url));
+}
+
+function formatContentLength(value?: number): string | undefined {
+  if (!value || !Number.isFinite(value)) return undefined;
+
+  if (value < 1024 * 1024) return `${Math.max(1, Math.round(value / 1024))} KB`;
+  return `${(value / 1024 / 1024).toFixed(1)} MB`;
+}
+
+function formatFinishedAt(): string {
+  const date = new Date();
+  const pad = (value: number) => String(value).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
 export const usePlayerStore = defineStore('player', {
   state: () => ({
     platform: detectPlatform() as PlatformKind,
-    currentId: 'demo-city-night',
+    currentId: 'demo-hls-x36',
     playlist: [
       {
+        id: 'demo-hls-x36',
+        title: 'x36xfzz.m3u8',
+        fileName: 'x36xfzz.m3u8',
+        source: '',
+        sourceType: 'network',
+        format: 'hls',
+        durationLabel: '00:10:34',
+        qualityLabel: 'm3u8 · 继续播放',
+        locationLabel: '网络',
+        downloadable: false,
+        createdAt: Date.now() - 4 * 60 * 60 * 1000,
+        posterTone: 'blue'
+      },
+      {
         id: 'demo-city-night',
-        title: '夜色城市旅行指南.mp4',
+        title: '夜色城市旅行指南南....',
         fileName: '夜色城市旅行指南.mp4',
         source: '',
         sourceType: 'local',
         format: 'mp4',
         durationLabel: '29:32',
         qualityLabel: '1080P',
-        locationLabel: '本地文件',
+        locationLabel: '本地',
         downloadable: true,
         createdAt: Date.now() - 3 * 60 * 60 * 1000,
-        posterTone: 'teal'
-      },
-      {
-        id: 'demo-hls',
-        title: '直播回放片段.m3u8',
-        fileName: '直播回放片段.m3u8',
-        source: '',
-        sourceType: 'network',
-        format: 'hls',
-        durationLabel: '41:08',
-        qualityLabel: '自动',
-        locationLabel: '流媒体',
-        downloadable: false,
-        createdAt: Date.now() - 2 * 60 * 60 * 1000,
         posterTone: 'gold'
       },
       {
@@ -75,11 +92,25 @@ export const usePlayerStore = defineStore('player', {
         sourceType: 'network',
         format: 'mp4',
         durationLabel: '12:20',
-        qualityLabel: '720P',
-        locationLabel: '网络地址',
+        qualityLabel: '单文件 · 可下载',
+        locationLabel: '网络',
         downloadable: true,
         createdAt: Date.now() - 75 * 60 * 1000,
         posterTone: 'blue'
+      },
+      {
+        id: 'demo-hls',
+        title: '直播回放片段.m3u8',
+        fileName: '直播回放片段.m3u8',
+        source: '',
+        sourceType: 'network',
+        format: 'hls',
+        durationLabel: '41:08',
+        qualityLabel: '分片资源',
+        locationLabel: '网络',
+        downloadable: false,
+        createdAt: Date.now() - 2 * 60 * 60 * 1000,
+        posterTone: 'gold'
       }
     ] as MediaItem[],
     downloads: [
@@ -89,7 +120,7 @@ export const usePlayerStore = defineStore('player', {
         status: 'downloading',
         progress: 68,
         speedLabel: '2.4MB/s',
-        targetLabel: '保存到 /Movies/Downloads'
+        targetLabel: '保存到 D:\\Movies\\Downloads'
       },
       {
         id: 'download-product',
@@ -190,7 +221,7 @@ export const usePlayerStore = defineStore('player', {
         durationLabel: '00:00',
         qualityLabel: format === 'hls' ? '自动' : '在线',
         locationLabel: '输入地址',
-        downloadable: isSingleFileVideo(trimmedUrl),
+        downloadable: isDownloadableNetworkUrl(trimmedUrl),
         createdAt: Date.now(),
         posterTone: format === 'hls' ? 'gold' : 'blue'
       };
@@ -243,6 +274,74 @@ export const usePlayerStore = defineStore('player', {
         speedLabel: '等待中',
         targetLabel: this.platform === 'capacitor' ? '保存到 /Movies/Downloads' : '保存到 Downloads'
       });
+    },
+    async downloadCurrentMedia() {
+      const media = this.currentMedia;
+      if (!media?.source || media.sourceType !== 'network') return;
+
+      const downloadId = `download-${Date.now()}`;
+      this.downloads.unshift({
+        id: downloadId,
+        title: media.title,
+        status: 'downloading',
+        progress: 0,
+        speedLabel: '探测中',
+        targetLabel: '等待选择保存位置',
+        sourceUrl: media.source
+      });
+
+      const updateDownload = (patch: Partial<DownloadItem>) => {
+        const index = this.downloads.findIndex((item) => item.id === downloadId);
+        const current = this.downloads[index];
+        if (index >= 0 && current) this.downloads.splice(index, 1, { ...current, ...patch });
+      };
+
+      try {
+        if (!window.electronMedia) {
+          throw new Error('当前运行端暂未接入 Electron 下载能力');
+        }
+
+        const probe = await window.electronMedia.probeDownload(media.source);
+        if (!probe.downloadable) {
+          throw new Error(probe.reason || '当前视频不可下载');
+        }
+
+        const probedSizeLabel = formatContentLength(probe.contentLength);
+        const probedPatch: Partial<DownloadItem> = {
+          title: probe.fileName || media.title,
+          progress: 10,
+          speedLabel: probe.downloadKind === 'hls' ? '准备保存 HLS 分片' : '准备保存文件',
+          targetLabel: '请选择保存位置'
+        };
+        if (probedSizeLabel) probedPatch.sizeLabel = probedSizeLabel;
+        updateDownload(probedPatch);
+
+        const result = await window.electronMedia.downloadUrl(media.source, probe.fileName || media.title);
+        if (result.canceled) {
+          this.removeDownload(downloadId);
+          return;
+        }
+
+        const finishedSizeLabel = result.segmentCount ? `${result.segmentCount} 个分片` : formatContentLength(probe.contentLength);
+        const finishedPatch: Partial<DownloadItem> = {
+          status: 'finished',
+          progress: 100,
+          speedLabel: '已完成',
+          targetLabel: result.outputDir || result.filePath || result.entryPath || '已保存',
+          finishedAt: formatFinishedAt()
+        };
+        if (finishedSizeLabel) finishedPatch.sizeLabel = finishedSizeLabel;
+        updateDownload(finishedPatch);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : '下载失败';
+        updateDownload({
+          status: 'failed',
+          progress: 0,
+          speedLabel: '下载失败',
+          targetLabel: message,
+          errorMessage: message
+        });
+      }
     },
     pauseAllDownloads() {
       this.downloads = this.downloads.map((item) => (

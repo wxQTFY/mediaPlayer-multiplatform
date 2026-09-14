@@ -5,9 +5,27 @@ import {
   registerQuasarRuntime,
   resolveElectronAssetsPath
 } from "#q-app/electron/main";
+import { downloadVideoFromUrl, probeVideoDownload } from "./video-download";
+import { fileDialogController } from "./services/file-dialog-service";
+import {
+  registerLocalFileProtocol,
+  registerLocalFileProtocolHandler
+} from "./services/local-file-protocol";
+import {
+  registerMediaServerIpc,
+  startMediaServer,
+  stopMediaServer
+} from "./services/media-server";
+import {
+  startTranscodeCacheCleanup,
+  stopAllTranscodes,
+  stopTranscodeCacheCleanup
+} from "./services/transcode-manager";
 
 // needed in case process is undefined under Linux
 const platform = process.platform || os.platform();
+
+registerLocalFileProtocol();
 
 async function createWindow() {
   /**
@@ -15,11 +33,11 @@ async function createWindow() {
    */
   const mainWindow = new BrowserWindow({
     icon: resolveElectronAssetsPath("icons/icon.png"), // Windows and Linux
-    width: 1280,
-    height: 800,
-    minWidth: 1120,
-    minHeight: 700,
-    backgroundColor: "#0b0f18",
+    width: 1208,
+    height: 768,
+    minWidth: 1000,
+    minHeight: 640,
+    backgroundColor: "#aebbc6",
     useContentSize: true,
     frame: false,
     autoHideMenuBar: true,
@@ -49,6 +67,11 @@ async function createWindow() {
 
 void app.whenReady().then(() => {
   registerQuasarRuntime();
+  registerLocalFileProtocolHandler();
+  fileDialogController();
+  registerMediaServerIpc();
+  startTranscodeCacheCleanup();
+  void startMediaServer();
   ipcMain.handle("window:minimize", () => BrowserWindow.getFocusedWindow()?.minimize());
   ipcMain.handle("window:toggle-maximize", () => {
     const focusedWindow = BrowserWindow.getFocusedWindow();
@@ -60,6 +83,12 @@ void app.whenReady().then(() => {
     }
   });
   ipcMain.handle("window:close", () => BrowserWindow.getFocusedWindow()?.close());
+  ipcMain.handle("media:probe-download", (_event, url: string) => {
+    return probeVideoDownload(url);
+  });
+  ipcMain.handle("media:download-url", (_event, url: string, suggestedName?: string) => {
+    return downloadVideoFromUrl(url, suggestedName);
+  });
 
   void createWindow();
 
@@ -74,4 +103,10 @@ app.on("window-all-closed", () => {
   if (platform !== "darwin") {
     app.quit();
   }
+});
+
+app.on("before-quit", () => {
+  stopAllTranscodes();
+  stopTranscodeCacheCleanup();
+  stopMediaServer();
 });

@@ -17,7 +17,7 @@ export interface MediaItem {
 
 export type PlaybackStatus = 'idle' | 'ready' | 'playing' | 'paused' | 'loading' | 'ended' | 'error';
 
-export type DownloadStatus = 'downloading' | 'paused' | 'finished';
+export type DownloadStatus = 'downloading' | 'paused' | 'finished' | 'failed';
 
 export interface DownloadItem {
   id: string;
@@ -28,6 +28,8 @@ export interface DownloadItem {
   sizeLabel?: string;
   targetLabel: string;
   finishedAt?: string;
+  sourceUrl?: string;
+  errorMessage?: string;
 }
 
 export interface PlatformCapability {
