@@ -308,6 +308,10 @@ function getUrlTitle(url: string): string {
   }
 }
 
+function getDisplayTitle(title?: string): string {
+  return (title || '网络视频').replace(/\.(mp4|mov|webm|m4v|m3u8)$/i, '');
+}
+
 async function openLocalFile(): Promise<void> {
   await playerStore.handleLocalFile();
   desktopView.value = 'video';
@@ -854,7 +858,7 @@ const scanState = reactive({
 
               <div class="mobile-player-info">
                 <div class="download-state">{{ downloadStateText }}</div>
-                <h3>{{ currentVideo?.videoName || selectedVideo?.title || '网络视频' }}</h3>
+                <h3>{{ getDisplayTitle(currentVideo?.videoName || selectedVideo?.title) }}</h3>
                 <p>播放页浮层使用深色半透明底和文字阴影，保证在亮色、暗色、复杂画面下都可读。</p>
                 <div class="mobile-player-actions">
                   <button type="button"><el-icon><Star /></el-icon><span>喜欢</span></button>
@@ -1914,14 +1918,15 @@ button {
   position: relative;
   height: calc(100% - env(safe-area-inset-bottom, 0px) - 64px);
   min-height: 0;
-  overflow: auto;
+  overflow: hidden;
   background: #11141a;
 }
 
 .mobile-player-hero {
   position: relative;
   height: 46%;
-  min-height: 292px;
+  min-height: 276px;
+  max-height: 376px;
   overflow: hidden;
   background:
     linear-gradient(180deg, rgb(2 6 23 / 88%), transparent 30%, transparent 55%, rgb(2 6 23 / 92%)),
@@ -2101,25 +2106,30 @@ button {
 }
 
 .mobile-player-info {
-  display: grid;
-  gap: 0;
-  min-height: 54%;
-  padding: 16px 16px calc(env(safe-area-inset-bottom, 0px) + 22px);
+  position: absolute;
+  inset: 46% 0 0;
+  display: block;
+  min-height: 0;
+  padding: 16px 16px 18px;
+  overflow: hidden;
   color: #f4f8fb;
   background: #11141a;
   border-radius: 22px 22px 0 0;
-  transform: translateY(-1px);
 }
 
 .download-state {
   display: inline-flex;
   align-items: center;
+  gap: 6px;
+  max-width: 100%;
   width: fit-content;
   min-height: 28px;
   margin-bottom: 12px;
-  padding: 0 9px;
+  padding: 0 10px;
   color: #9ba7b5;
   font-size: 11px;
+  line-height: 1;
+  white-space: nowrap;
   background: #292e39;
   border-radius: 999px;
 }
@@ -2129,12 +2139,22 @@ button {
   font-size: 18px;
   font-weight: 500;
   line-height: 1.2;
+  color: #f8fafc;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .mobile-player-info p {
   margin: 0;
   color: #9ba7b5;
-  line-height: 1.6;
+  font-size: 12px;
+  line-height: 1.55;
+  display: -webkit-box;
+  max-width: 340px;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .mobile-player-actions {
@@ -2148,14 +2168,22 @@ button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  flex: 0 0 auto;
+  min-width: 0;
+  height: 34px;
   min-height: 34px;
   padding: 0 12px;
   color: #f4f8fb;
+  font-size: 12px;
   white-space: nowrap;
   background: #1d222b;
   border: 1px solid rgb(255 255 255 / 10%);
   border-radius: 999px;
   gap: 6px;
+}
+
+.mobile-player-actions button .el-icon {
+  font-size: 14px;
 }
 
 .bottom-nav,
