@@ -871,7 +871,7 @@ const scanState = reactive({
   height: 100vh;
   overflow: hidden;
   color: #f4f8fb;
-  background: #aebbc6;
+  background: #171a21;
   font-family: "Microsoft YaHei", "PingFang SC", "Helvetica Neue", Arial, sans-serif;
 }
 
@@ -887,14 +887,14 @@ button {
 .desktop-window {
   display: grid;
   grid-template-rows: 60px minmax(0, 1fr);
-  width: min(100vw - 8px, 1200px);
-  height: min(100vh - 8px, 760px);
-  margin: 4px auto;
+  width: 100vw;
+  height: 100vh;
+  margin: 0;
   overflow: hidden;
   background: #171a21;
-  border: 1px solid rgb(255 255 255 / 12%);
-  border-radius: 8px;
-  box-shadow: 0 28px 84px rgb(31 42 58 / 38%);
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
 }
 
 .desktop-titlebar,
@@ -1385,6 +1385,7 @@ button {
 .download-task-list {
   display: grid;
   align-content: start;
+  width: 100%;
   min-height: 0;
   gap: 0;
 }
@@ -1419,8 +1420,12 @@ button {
 }
 
 .download-meta span {
+  display: block;
+  overflow: hidden;
   color: #66758a;
   font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .progress,
@@ -1441,6 +1446,7 @@ button {
 .row-actions {
   display: flex;
   gap: 8px;
+  flex: 0 0 auto;
 }
 
 .row-actions button {
@@ -1454,6 +1460,8 @@ button {
 
 .finished-table {
   display: grid;
+  width: 100%;
+  min-width: 0;
   align-self: start;
   overflow: hidden;
   background: white;
@@ -1463,14 +1471,22 @@ button {
 
 .finished-row {
   display: grid;
-  grid-template-columns: minmax(220px, 1.6fr) 120px 180px 132px;
+  grid-template-columns: minmax(180px, 1.6fr) minmax(82px, 0.7fr) minmax(132px, 1fr) 116px;
   align-items: center;
-  gap: 18px;
+  gap: 12px;
   min-height: 52px;
-  padding: 0 18px;
+  min-width: 0;
+  padding: 0 14px 0 18px;
   color: #172033;
   font-size: 14px;
   border-bottom: 1px solid #d8e0e8;
+}
+
+.finished-row > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .finished-row:last-child {
@@ -1489,6 +1505,7 @@ button {
   align-items: center;
   justify-content: flex-start;
   gap: 8px;
+  min-width: 0;
 }
 
 .finished-actions button {
@@ -1501,6 +1518,41 @@ button {
 
 .finished-actions .clear {
   color: #d14b55;
+}
+
+@media (max-width: 980px) {
+  .downloads-view {
+    gap: 16px;
+    padding: 24px 20px;
+  }
+
+  .download-row {
+    gap: 10px;
+  }
+
+  .row-actions {
+    gap: 6px;
+  }
+
+  .row-actions button {
+    width: 36px;
+  }
+
+  .finished-row {
+    grid-template-columns: minmax(140px, 1fr) 72px 118px 98px;
+    gap: 6px;
+    padding: 0 10px;
+    font-size: 13px;
+  }
+
+  .finished-actions {
+    gap: 4px;
+  }
+
+  .finished-actions button {
+    width: 30px;
+    height: 30px;
+  }
 }
 
 .mobile-wrap {
