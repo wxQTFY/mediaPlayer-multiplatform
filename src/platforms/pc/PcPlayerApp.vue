@@ -990,6 +990,7 @@ button {
 
 .desktop-body {
   min-height: 0;
+  align-items: stretch;
 }
 
 .desktop-sidebar {
@@ -1158,6 +1159,7 @@ button {
 .desktop-main {
   position: relative;
   flex: 1;
+  height: 100%;
   min-width: 0;
   min-height: 0;
   overflow: hidden;
