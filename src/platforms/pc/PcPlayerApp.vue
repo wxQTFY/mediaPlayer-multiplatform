@@ -156,6 +156,7 @@ const finishedRecords = ref<FinishedRecord[]>([
 const selectedVideo = computed(() => videos.value.find((video) => video.id === selectedVideoId.value));
 const currentVideo = computed(() => playerStore.currentVideo);
 const hasPlayingVideo = computed(() => Boolean(currentVideo.value?.videoPath));
+const sidebarVideoCount = computed(() => (playerStore.sortedVideoList.length > 0 ? videos.value.length : 12));
 
 const videos = computed<DisplayVideo[]>(() => {
   const list = playerStore.sortedVideoList.map((item) => ({
@@ -527,7 +528,7 @@ const scanState = reactive({
             </nav>
 
             <div class="library-row">
-              <strong>共 {{ videos.length }} 个视频</strong>
+              <strong>共 {{ sidebarVideoCount }} 个视频</strong>
               <div class="sidebar-actions">
                 <button type="button" aria-label="添加" title="添加" @click="openLocalFile">
                   <el-icon><Plus /></el-icon>
@@ -943,7 +944,15 @@ button {
 .brand-mark {
   width: 39px;
   height: 39px;
+  font-size: 17px;
   border-radius: 12px;
+  box-shadow: inset 0 0 0 7px rgb(6 29 27 / 10%);
+}
+
+.brand-mark .el-icon {
+  padding: 3px;
+  border: 2px solid currentColor;
+  border-radius: 5px;
 }
 
 .window-actions {
@@ -1074,18 +1083,18 @@ button {
 .desktop-video-item {
   width: 100%;
   gap: 11px;
-  padding: 9px 12px;
+  padding: 9px 12px 9px 18px;
   color: white;
   text-align: left;
   background: transparent;
-  border: 0;
-  border-left: 3px solid transparent;
+  border: 1px solid transparent;
+  border-radius: 8px;
 }
 
 .desktop-video-item:hover,
 .desktop-video-item.active {
-  background: #1d222b;
-  border-left-color: #42d7ca;
+  background: rgb(66 215 202 / 9%);
+  border-color: #42d7ca;
 }
 
 .thumb {
@@ -1095,9 +1104,16 @@ button {
   height: 46px;
   overflow: hidden;
   background:
-    radial-gradient(circle at 70% 35%, rgb(66 215 202 / 48%), transparent 32%),
+    linear-gradient(135deg, rgb(66 215 202 / 85%), rgb(41 83 136 / 90%)),
     linear-gradient(135deg, #263341, #111826 68%);
   border-radius: 6px;
+}
+
+.desktop-video-item:nth-child(2n) .thumb,
+.mobile-video-card:nth-child(2n) .thumb {
+  background:
+    linear-gradient(135deg, rgb(241 189 72 / 72%), rgb(39 65 126 / 86%)),
+    linear-gradient(135deg, #263341, #111826 68%);
 }
 
 .thumb::after {
@@ -1156,22 +1172,59 @@ button {
   display: grid;
   place-items: center;
   background:
-    radial-gradient(circle at center, rgb(255 255 255 / 14%) 0 1px, transparent 2px 58px),
-    linear-gradient(135deg, #1267c9, #044c9f 48%, #043473);
+    linear-gradient(180deg, rgb(7 10 18 / 18%), rgb(7 10 18 / 64%)),
+    radial-gradient(circle at 54% 42%, rgb(66 215 202 / 24%), transparent 18%),
+    linear-gradient(130deg, #2233a6 0%, #202997 30%, #14265d 58%, #101933 100%);
+  position: relative;
+  overflow: hidden;
+}
+
+.desktop-video-view::before {
+  position: absolute;
+  top: -22%;
+  right: -18%;
+  width: 74%;
+  height: 134%;
+  content: "";
+  border: 1px solid rgb(66 215 202 / 34%);
+  border-radius: 50%;
+  box-shadow:
+    inset 22px 0 0 rgb(66 215 202 / 4%),
+    inset 44px 0 0 rgb(77 125 245 / 5%);
+  transform: rotate(-14deg);
+}
+
+.desktop-video-view::after {
+  position: absolute;
+  inset: 0;
+  content: "";
+  pointer-events: none;
+  opacity: 0.56;
+  background: repeating-radial-gradient(circle at 78% 16%, transparent 0 13px, rgb(66 215 202 / 20%) 14px, transparent 15px);
 }
 
 .desktop-home-card {
+  position: relative;
+  z-index: 1;
   display: grid;
   place-items: center;
-  gap: 22px;
+  gap: 18px;
   width: min(720px, 84%);
+  transform: translateY(-22px);
 }
 
 .hero-mark {
-  width: 102px;
-  height: 102px;
-  font-size: 46px;
-  border-radius: 28px;
+  width: 96px;
+  height: 96px;
+  color: #dffefa;
+  font-size: 42px;
+  background:
+    radial-gradient(circle at 36% 28%, rgb(255 255 255 / 42%), transparent 22%),
+    linear-gradient(145deg, #42d7ca, #426bf0 62%, #15214d);
+  border-radius: 50%;
+  box-shadow:
+    0 20px 60px rgb(0 0 0 / 34%),
+    0 0 0 8px rgb(255 255 255 / 8%);
 }
 
 .url-form {
@@ -1187,7 +1240,6 @@ button {
   color: #172033;
   background: white;
   border-radius: 7px;
-  box-shadow: 0 12px 28px rgb(0 0 0 / 18%);
 }
 
 .url-form span {
@@ -1248,23 +1300,32 @@ button {
 .downloads-view {
   min-height: 0;
   overflow: auto;
-  padding: 28px;
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  gap: 18px;
+  padding: 28px 34px;
   color: #172033;
   background: #f7fafc;
 }
 
 .download-tabs {
-  display: flex;
-  gap: 12px;
-  border-bottom: 1px solid #d9e2ef;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 28px;
+  width: fit-content;
+  min-width: 260px;
+  border-bottom: 0;
 }
 
 .download-tabs button {
   position: relative;
-  padding: 0 4px 14px;
-  color: #6d7787;
-  font-weight: 700;
+  min-height: 40px;
+  padding: 0;
+  color: #172033;
+  font-size: 16px;
+  font-weight: 500;
   background: transparent;
+  white-space: nowrap;
 }
 
 .download-tabs button.active {
@@ -1274,17 +1335,19 @@ button {
 .download-tabs button.active::after {
   position: absolute;
   right: 0;
-  bottom: -1px;
-  left: 0;
+  bottom: 0;
+  left: 50%;
+  width: 20px;
   height: 3px;
   content: "";
   background: #1677ff;
-  border-radius: 3px 3px 0 0;
+  border-radius: 999px;
+  transform: translateX(-50%);
 }
 
 .bulk-actions {
   gap: 10px;
-  margin: 20px 0;
+  margin: 0;
 }
 
 .bulk-actions button {
@@ -1293,10 +1356,10 @@ button {
   gap: 6px;
   height: 34px;
   padding: 0 13px;
-  color: #233047;
-  background: white;
-  border: 1px solid #d9e2ef;
-  border-radius: 6px;
+  color: #5d9dfb;
+  background: #edf5ff;
+  border: 0;
+  border-radius: 7px;
 }
 
 .bulk-actions .danger,
@@ -1306,16 +1369,18 @@ button {
 
 .download-task-list {
   display: grid;
-  gap: 12px;
+  align-content: start;
+  gap: 0;
 }
 
 .download-row {
   justify-content: space-between;
   gap: 16px;
-  padding: 16px;
-  background: white;
-  border: 1px solid #e4eaf3;
-  border-radius: 8px;
+  padding: 14px 0;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid #d8e0e8;
+  border-radius: 0;
 }
 
 .download-meta {
@@ -1334,14 +1399,14 @@ button {
 .mobile-progress {
   height: 7px;
   overflow: hidden;
-  background: #e8eef7;
+  background: rgb(255 255 255 / 10%);
   border-radius: 999px;
 }
 
 .progress div,
 .mobile-progress div {
   height: 100%;
-  background: linear-gradient(90deg, #42d7ca, #1677ff);
+  background: linear-gradient(90deg, #42d7ca, #f4bf45);
   border-radius: inherit;
 }
 
@@ -1351,11 +1416,11 @@ button {
 
 .row-actions button,
 .finished-actions button {
-  width: 32px;
-  height: 32px;
-  color: #40516d;
-  background: #f2f5fa;
-  border-radius: 6px;
+  width: 36px;
+  height: 36px;
+  color: #f4f8fb;
+  background: #292e39;
+  border-radius: 7px;
 }
 
 .finished-table {
