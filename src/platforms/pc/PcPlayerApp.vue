@@ -178,6 +178,15 @@ const filteredVideos = computed(() => {
   return videos.value.filter((video) => video.title.toLowerCase().includes(keyword));
 });
 
+const mobileVideos = computed(() => {
+  if (playerStore.sortedVideoList.length > 0) return videos.value;
+  return [
+    sampleVideos.find((video) => video.id === 'video-city-night'),
+    sampleVideos.find((video) => video.id === 'video-live-replay'),
+    sampleVideos.find((video) => video.id === 'video-product-demo')
+  ].filter((video): video is DisplayVideo => Boolean(video));
+});
+
 const finishedSelectAllLabel = computed(() => {
   const selectedCount = selectedFinishedRecords.value.size;
   return selectedCount > 0 && selectedCount === finishedRecords.value.length ? '取消全选' : '全选';
@@ -402,7 +411,7 @@ function toggleHomeVideo(id: string): void {
 
 function selectAllHomeVideos(): void {
   homeSelecting.value = true;
-  selectedHomeVideos.value = new Set(videos.value.map((video) => video.id));
+  selectedHomeVideos.value = new Set(mobileVideos.value.map((video) => video.id));
 }
 
 async function deleteSelectedMobileItems(): Promise<void> {
@@ -699,7 +708,7 @@ const scanState = reactive({
 
               <div class="mobile-section-head">
                 <span>视频列表</span>
-                <span>{{ homeSelecting ? `已选 ${selectedHomeVideos.size} / ${videos.length}` : `${videos.length} 个文件` }}</span>
+                <span>{{ homeSelecting ? `已选 ${selectedHomeVideos.size} / ${mobileVideos.length}` : `${mobileVideos.length} 个文件` }}</span>
               </div>
 
               <div class="mobile-select-toolbar" :class="{ active: homeSelecting }">
@@ -710,7 +719,7 @@ const scanState = reactive({
 
               <div class="mobile-video-list">
                 <article
-                  v-for="video in videos"
+                  v-for="video in mobileVideos"
                   :key="video.id"
                   class="mobile-video-card"
                   :class="{ selecting: homeSelecting }"
@@ -755,14 +764,20 @@ const scanState = reactive({
               <div v-if="downloadTab === 'downloading'" class="mobile-download-list">
                 <article v-for="task in downloadTasks" :key="task.id" class="mobile-download-card">
                   <div class="download-card-top">
-                    <strong>{{ task.title }}</strong>
+                    <input class="mobile-download-check" type="checkbox" aria-label="选择下载任务" :checked="task.id === 'download-city-night'" />
+                    <span>
+                      <strong>{{ task.title }}</strong>
+                      <em>{{ task.remainingTime ? `剩余 ${task.remainingTime}` : `保存到 ${task.savePath}` }}</em>
+                    </span>
                     <div class="row-actions">
                       <button type="button" aria-label="暂停下载" @click="toggleTaskStatus(task.id)"><el-icon><VideoPause /></el-icon></button>
                       <button type="button" aria-label="删除下载" @click="deleteTask(task.id)"><el-icon><Delete /></el-icon></button>
                     </div>
                   </div>
-                  <span>{{ task.progress }}% · {{ task.speed || '已暂停' }} · {{ task.remainingTime ? `剩余 ${task.remainingTime}` : task.savePath }}</span>
-                  <div class="mobile-progress"><div :style="{ width: `${task.progress}%` }"></div></div>
+                  <div class="mobile-progress-row">
+                    <div class="mobile-progress"><div :style="{ width: `${task.progress}%` }"></div></div>
+                    <span>{{ task.progress }}% · {{ task.speed || '已暂停' }}</span>
+                  </div>
                 </article>
               </div>
 
@@ -1580,39 +1595,52 @@ button {
 }
 
 .mobile-page {
-  height: 100%;
-  overflow: auto;
-  padding:
-    calc(env(safe-area-inset-top, 0px) + 14px)
-    16px
-    calc(env(safe-area-inset-bottom, 0px) + 92px);
+  position: absolute;
+  inset: 0 0 calc(env(safe-area-inset-bottom, 0px) + 64px);
+  overflow: hidden;
+  padding: 0;
 }
 
 .mobile-appbar {
   position: relative;
+  display: flex;
+  align-items: center;
   justify-content: space-between;
-  min-height: 42px;
+  gap: 10px;
+  height: 54px;
+  padding: 8px 16px;
+  background: rgb(29 32 40 / 92%);
+  border-bottom: 1px solid rgb(255 255 255 / 10%);
+  backdrop-filter: blur(14px);
+  z-index: 3;
 }
 
 .mobile-mark {
   width: 34px;
   height: 34px;
-  border-radius: 10px;
+  border-radius: 12px;
 }
 
 .mobile-appbar strong {
-  margin-right: auto;
-  margin-left: 10px;
-  font-size: 18px;
+  position: absolute;
+  right: 68px;
+  left: 68px;
+  overflow: hidden;
+  font-size: 16px;
+  font-weight: 500;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .mobile-appbar button,
 .mobile-url-row button {
-  width: 34px;
-  height: 34px;
+  width: 40px;
+  height: 40px;
   color: #f4f8fb;
   background: #1d222b;
-  border-radius: 10px;
+  border: 1px solid rgb(255 255 255 / 10%);
+  border-radius: 12px;
 }
 
 .scan-popover {
@@ -1647,14 +1675,14 @@ button {
 
 .mobile-url-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 42px;
+  grid-template-columns: minmax(0, 1fr) 40px;
   gap: 8px;
-  margin-top: 18px;
+  margin: 4px 16px 12px;
 }
 
 .mobile-url-row input {
   min-width: 0;
-  height: 42px;
+  height: 40px;
   padding: 0 12px;
   color: white;
   background: #1d222b;
@@ -1664,15 +1692,20 @@ button {
 }
 
 .mobile-url-row button {
-  width: 42px;
-  height: 42px;
+  width: 40px;
+  height: 40px;
   color: #061d1b;
   background: #42d7ca;
 }
 
 .mobile-section-head {
+  display: flex;
+  align-items: center;
   justify-content: space-between;
-  margin-top: 24px;
+  gap: 10px;
+  padding: 0 16px 9px;
+  font-size: 13px;
+  font-weight: 500;
 }
 
 .mobile-section-head span:last-child {
@@ -1681,9 +1714,15 @@ button {
 }
 
 .mobile-select-toolbar {
-  display: flex;
-  gap: 8px;
-  margin-top: 12px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 7px;
+  align-items: center;
+  margin: 0 16px 10px;
+  padding: 8px;
+  background: #1d222b;
+  border: 1px solid rgb(255 255 255 / 10%);
+  border-radius: 13px;
 }
 
 .mobile-select-toolbar button,
@@ -1698,6 +1737,9 @@ button {
   background: #1d222b;
   border: 1px solid rgb(255 255 255 / 10%);
   border-radius: 999px;
+  justify-content: center;
+  font-size: 12px;
+  white-space: nowrap;
 }
 
 .mobile-select-toolbar:not(.active) button:nth-child(n + 2) {
@@ -1709,17 +1751,37 @@ button {
 .mobile-finished-list {
   display: grid;
   gap: 10px;
-  margin-top: 14px;
+  max-height: calc(100% - 164px);
+  margin: 0;
+  padding: 0 16px 12px;
+  overflow: hidden;
 }
 
 .mobile-video-card,
 .mobile-download-card,
 .mobile-finished-card {
   gap: 10px;
-  padding: 12px;
+  padding: 8px;
   background: #1d222b;
   border: 1px solid rgb(255 255 255 / 8%);
   border-radius: 14px;
+}
+
+.mobile-video-card {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr);
+  align-items: center;
+  min-height: 80px;
+}
+
+.mobile-video-card .thumb {
+  width: 96px;
+  aspect-ratio: 16 / 10;
+  border-radius: 10px;
+}
+
+.mobile-video-card.selecting {
+  grid-template-columns: 24px 96px minmax(0, 1fr);
 }
 
 .mobile-video-card input,
@@ -1730,14 +1792,14 @@ button {
   accent-color: #42d7ca;
 }
 
-.downloads-mobile .mobile-download-tabs {
-  margin-top: 22px;
-}
-
 .mobile-download-tabs {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 8px;
+  gap: 4px;
+  margin: 10px 16px 12px;
+  padding: 4px;
+  background: #292e39;
+  border-radius: 999px;
 }
 
 .mobile-download-tabs button {
@@ -1754,21 +1816,77 @@ button {
 
 .mobile-bulk-actions,
 .finished-select-row {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
   gap: 8px;
-  margin-top: 16px;
+  margin: 0 16px 12px;
 }
 
 .mobile-download-card {
   display: grid;
+  gap: 8px;
+  padding: 10px;
   color: #9ba7b5;
   font-size: 12px;
 }
 
 .download-card-top {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 9px;
+  align-items: center;
   justify-content: space-between;
   color: #f4f8fb;
   font-size: 14px;
+}
+
+.download-card-top > span {
+  display: grid;
+  min-width: 0;
+}
+
+.download-card-top strong,
+.download-card-top em {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.download-card-top em {
+  margin-top: 4px;
+  color: #9ba7b5;
+  font-size: 11px;
+  font-style: normal;
+}
+
+.mobile-download-card .row-actions {
+  gap: 6px;
+}
+
+.mobile-download-card .row-actions button {
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+}
+
+.mobile-download-check {
+  width: 20px;
+  height: 20px;
+  accent-color: #42d7ca;
+}
+
+.mobile-progress-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  color: #9ba7b5;
+  font-size: 11px;
+}
+
+.mobile-progress {
+  height: 6px;
+  background: #292e39;
 }
 
 .mobile-finished-card {
@@ -1912,19 +2030,20 @@ button {
 .bottom-nav,
 .bottom-delete-bar {
   position: absolute;
-  right: 12px;
-  bottom: calc(env(safe-area-inset-bottom, 0px) + 12px);
-  left: 12px;
+  right: 0;
+  bottom: 0;
+  left: 0;
   z-index: 50;
-  height: 62px;
-  background: rgb(17 20 26 / 92%);
-  border: 1px solid rgb(255 255 255 / 10%);
-  border-radius: 18px;
-  backdrop-filter: blur(12px);
+  height: calc(env(safe-area-inset-bottom, 0px) + 64px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  background: rgb(24 27 35 / 96%);
+  border-top: 1px solid rgb(255 255 255 / 10%);
+  backdrop-filter: blur(16px);
 }
 
 .bottom-nav {
-  justify-content: space-around;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
 }
 
 .bottom-nav button,
@@ -1944,13 +2063,19 @@ button {
 .bottom-delete-bar {
   display: grid;
   place-items: center;
+  padding: 10px 16px calc(env(safe-area-inset-bottom, 0px) + 10px);
 }
 
 .bottom-delete-bar button {
   display: inline-flex;
   grid-auto-flow: column;
+  width: 100%;
+  min-height: 42px;
   color: #ff6b72;
   font-weight: 700;
+  background: #1d222b;
+  border: 1px solid rgb(255 255 255 / 10%);
+  border-radius: 13px;
 }
 
 .drop-overlay {
