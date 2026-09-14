@@ -675,14 +675,7 @@ const scanState = reactive({
       </section>
 
       <section v-else class="mobile-wrap" aria-label="影音播放器移动端">
-        <div class="phone">
-          <div class="phone-screen">
-            <div class="mobile-status" :class="{ hidden: mobilePage === 'player' }">
-              <span>9:41</span>
-              <span>5G · 100%</span>
-            </div>
-
-            <section v-show="mobilePage === 'home'" class="mobile-page">
+        <section v-show="mobilePage === 'home'" class="mobile-page">
               <header class="mobile-appbar">
                 <div class="mobile-mark"><el-icon><CaretRight /></el-icon></div>
                 <strong>首页</strong>
@@ -737,9 +730,9 @@ const scanState = reactive({
                   </span>
                 </article>
               </div>
-            </section>
+        </section>
 
-            <section v-show="mobilePage === 'downloads'" class="mobile-page downloads-mobile">
+        <section v-show="mobilePage === 'downloads'" class="mobile-page downloads-mobile">
               <header class="mobile-appbar">
                 <div class="mobile-mark"><el-icon><CaretRight /></el-icon></div>
                 <strong>下载</strong>
@@ -799,9 +792,9 @@ const scanState = reactive({
                   </article>
                 </div>
               </div>
-            </section>
+        </section>
 
-            <section v-show="mobilePage === 'player'" class="mobile-player-page">
+        <section v-show="mobilePage === 'player'" class="mobile-player-page">
               <div class="mobile-player-hero">
                 <div class="readable-bar">
                   <button type="button" aria-label="返回" @click="backFromPlayer"><el-icon><Back /></el-icon></button>
@@ -842,21 +835,19 @@ const scanState = reactive({
                 <h3>{{ currentVideo?.videoName || selectedVideo?.title || '网络视频' }}</h3>
                 <p>播放页浮层使用深色半透明底和文字阴影，保证在亮色、暗色、复杂画面下都可读。</p>
               </div>
-            </section>
+        </section>
 
-            <nav v-if="!showMobileDeleteBar && mobilePage !== 'player'" class="bottom-nav" aria-label="底部导航">
+        <nav v-if="!showMobileDeleteBar && mobilePage !== 'player'" class="bottom-nav" aria-label="底部导航">
               <button type="button" :class="{ active: mobilePage === 'home' }" @click="setMobilePage('home')">
                 <el-icon><House /></el-icon><span>首页</span>
               </button>
               <button type="button" :class="{ active: mobilePage === 'downloads' }" @click="setMobilePage('downloads')">
                 <el-icon><Download /></el-icon><span>下载</span>
               </button>
-            </nav>
+        </nav>
 
-            <div v-if="showMobileDeleteBar" class="bottom-delete-bar">
+        <div v-if="showMobileDeleteBar" class="bottom-delete-bar">
               <button type="button" @click="deleteSelectedMobileItems"><el-icon><Delete /></el-icon>删除</button>
-            </div>
-          </div>
         </div>
       </section>
 
@@ -1580,49 +1571,21 @@ button {
 }
 
 .mobile-wrap {
-  width: 100%;
-  height: 100%;
-  display: grid;
-  place-items: center;
-  background: #0d1219;
-}
-
-.phone {
-  width: min(100vw, 430px);
-  height: min(100vh, 900px);
-  padding: 10px;
-  background: #171a21;
-  border-radius: 34px;
-}
-
-.phone-screen {
   position: relative;
   width: 100%;
   height: 100%;
   overflow: hidden;
   color: #f4f8fb;
   background: #11141a;
-  border: 1px solid rgb(255 255 255 / 10%);
-  border-radius: 26px;
-}
-
-.mobile-status {
-  display: flex;
-  justify-content: space-between;
-  height: 36px;
-  padding: 12px 20px 0;
-  color: #cbd5e1;
-  font-size: 12px;
-}
-
-.mobile-status.hidden {
-  visibility: hidden;
 }
 
 .mobile-page {
-  height: calc(100% - 36px);
+  height: 100%;
   overflow: auto;
-  padding: 12px 16px 92px;
+  padding:
+    calc(env(safe-area-inset-top, 0px) + 14px)
+    16px
+    calc(env(safe-area-inset-bottom, 0px) + 92px);
 }
 
 .mobile-appbar {
@@ -1820,7 +1783,7 @@ button {
 .mobile-player-page {
   height: 100%;
   overflow: auto;
-  padding-bottom: 24px;
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 24px);
   background: #11141a;
 }
 
@@ -1841,7 +1804,7 @@ button {
 
 .readable-bar {
   position: absolute;
-  top: 14px;
+  top: calc(env(safe-area-inset-top, 0px) + 14px);
   right: 12px;
   left: 12px;
   z-index: 30;
@@ -1950,7 +1913,7 @@ button {
 .bottom-delete-bar {
   position: absolute;
   right: 12px;
-  bottom: 12px;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 12px);
   left: 12px;
   z-index: 50;
   height: 62px;
