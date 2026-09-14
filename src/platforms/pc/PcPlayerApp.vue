@@ -156,7 +156,7 @@ const finishedRecords = ref<FinishedRecord[]>([
 const selectedVideo = computed(() => videos.value.find((video) => video.id === selectedVideoId.value));
 const currentVideo = computed(() => playerStore.currentVideo);
 const hasPlayingVideo = computed(() => Boolean(currentVideo.value?.videoPath));
-const sidebarVideoCount = computed(() => (playerStore.sortedVideoList.length > 0 ? videos.value.length : 12));
+const sidebarVideoCount = computed(() => Math.max(videos.value.length, 12));
 
 const videos = computed<DisplayVideo[]>(() => {
   const list = playerStore.sortedVideoList.map((item) => ({
@@ -527,25 +527,27 @@ const scanState = reactive({
               </button>
             </nav>
 
-            <div class="library-row">
-              <strong>共 {{ sidebarVideoCount }} 个视频</strong>
-              <div class="sidebar-actions">
-                <button type="button" aria-label="添加" title="添加" @click="openLocalFile">
-                  <el-icon><Plus /></el-icon>
-                </button>
-                <button type="button" aria-label="删除" title="删除" @click="playerStore.deleteAllVideos">
-                  <el-icon><Delete /></el-icon>
-                </button>
-                <button type="button" aria-label="排序" title="排序" @click="playerStore.toggleSortDate">
-                  <el-icon><Sort /></el-icon>
-                </button>
+            <div class="library-head">
+              <div class="library-row">
+                <strong>共 {{ sidebarVideoCount }} 个视频</strong>
+                <div class="sidebar-actions">
+                  <button type="button" aria-label="添加" title="添加" @click="openLocalFile">
+                    <el-icon><Plus /></el-icon>
+                  </button>
+                  <button type="button" aria-label="删除" title="删除" @click="playerStore.deleteAllVideos">
+                    <el-icon><Delete /></el-icon>
+                  </button>
+                  <button type="button" aria-label="排序" title="排序" @click="playerStore.toggleSortDate">
+                    <el-icon><Sort /></el-icon>
+                  </button>
+                </div>
               </div>
-            </div>
 
-            <label class="sidebar-search">
-              <el-icon><Search /></el-icon>
-              <input v-model="searchKeyword" aria-label="搜索列表视频" placeholder="搜索列表视频" />
-            </label>
+              <label class="sidebar-search">
+                <el-icon><Search /></el-icon>
+                <input v-model="searchKeyword" aria-label="搜索列表视频" placeholder="搜索列表视频" />
+              </label>
+            </div>
 
             <div class="desktop-video-list" aria-label="视频列表">
               <button
@@ -993,7 +995,7 @@ button {
 
 .desktop-sidebar {
   display: grid;
-  grid-template-rows: 58px 44px 54px minmax(0, 1fr);
+  grid-template-rows: 58px auto minmax(0, 1fr);
   width: 260px;
   height: 100%;
   min-height: 0;
@@ -1035,12 +1037,29 @@ button {
 
 .library-row {
   justify-content: space-between;
-  padding: 0 12px;
+  gap: 10px;
   font-size: 13px;
   border-bottom: 0;
 }
 
+.library-head {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border-bottom: 1px solid rgb(255 255 255 / 10%);
+}
+
+.library-row strong {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .sidebar-actions {
+  flex: 0 0 auto;
   gap: 6px;
 }
 
@@ -1058,7 +1077,6 @@ button {
   align-items: center;
   gap: 8px;
   height: 32px;
-  margin: 10px 12px 12px;
   padding: 0 10px;
   color: #9ba7b5;
   background: #1d232d;
@@ -1070,9 +1088,15 @@ button {
   width: 100%;
   min-width: 0;
   color: white;
+  font-size: 12px;
   background: transparent;
   border: 0;
   outline: 0;
+}
+
+.sidebar-search input::placeholder {
+  color: #d5dde8;
+  opacity: 1;
 }
 
 .desktop-video-list {
