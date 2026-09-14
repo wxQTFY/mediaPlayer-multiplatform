@@ -886,15 +886,15 @@ button {
 
 .desktop-window {
   display: grid;
-  grid-template-rows: 61px minmax(0, 1fr);
-  width: min(100vw - 8px, 1208px);
-  height: min(100vh - 8px, 768px);
+  grid-template-rows: 60px minmax(0, 1fr);
+  width: min(100vw - 8px, 1200px);
+  height: min(100vh - 8px, 760px);
   margin: 4px auto;
   overflow: hidden;
-  background: #11141a;
-  border: 1px solid #27313d;
-  border-radius: 6px;
-  box-shadow: 0 18px 44px rgb(3 8 16 / 32%);
+  background: #171a21;
+  border: 1px solid rgb(255 255 255 / 12%);
+  border-radius: 8px;
+  box-shadow: 0 28px 84px rgb(31 42 58 / 38%);
 }
 
 .desktop-titlebar,
@@ -919,17 +919,17 @@ button {
 
 .desktop-titlebar {
   justify-content: space-between;
-  padding: 0 18px;
-  background: #1d2028;
-  border-bottom: 1px solid #222936;
+  padding: 0 12px 0 20px;
+  background: linear-gradient(180deg, #1e2129, #191c23);
+  border-bottom: 1px solid rgb(255 255 255 / 10%);
   user-select: none;
   -webkit-app-region: drag;
 }
 
 .brand {
   gap: 12px;
-  font-size: 18px;
-  font-weight: 700;
+  font-size: 20px;
+  font-weight: 500;
 }
 
 .brand-mark,
@@ -942,21 +942,15 @@ button {
 }
 
 .brand-mark {
-  width: 39px;
-  height: 39px;
-  font-size: 17px;
-  border-radius: 12px;
-  box-shadow: inset 0 0 0 7px rgb(6 29 27 / 10%);
-}
-
-.brand-mark .el-icon {
-  padding: 3px;
-  border: 2px solid currentColor;
-  border-radius: 5px;
+  width: 34px;
+  height: 34px;
+  font-size: 18px;
+  border-radius: 10px;
+  box-shadow: 0 0 0 4px rgb(66 215 202 / 10%);
 }
 
 .window-actions {
-  gap: 17px;
+  gap: 4px;
   -webkit-app-region: no-drag;
 }
 
@@ -977,15 +971,19 @@ button {
 }
 
 .window-actions button {
-  width: 24px;
-  height: 24px;
-  color: #c6ccd6;
+  width: 38px;
+  height: 34px;
+  color: rgb(244 248 251 / 86%);
+  border-radius: 6px;
+}
+
+.window-actions button:hover {
+  background: rgb(255 255 255 / 8%);
 }
 
 .window-actions .close:hover {
   color: white;
-  background: #d94747;
-  border-radius: 4px;
+  background: #d94141;
 }
 
 .desktop-body {
@@ -995,19 +993,20 @@ button {
 
 .desktop-sidebar {
   display: grid;
-  grid-template-rows: 63px 43px 55px minmax(0, 1fr);
+  grid-template-rows: 58px 44px 54px minmax(0, 1fr);
   width: 260px;
   height: 100%;
   min-height: 0;
   background: #11141a;
-  border-right: 1px solid #1f2732;
+  border-right: 1px solid rgb(255 255 255 / 10%);
 }
 
 .view-tabs {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 6px;
-  padding: 12px 11px;
+  padding: 12px;
+  border-bottom: 1px solid rgb(255 255 255 / 10%);
 }
 
 .view-tabs button,
@@ -1021,10 +1020,10 @@ button {
 
 .view-tabs button {
   height: 34px;
-  color: #fff;
-  font-weight: 700;
-  background: #272e3a;
-  border: 1px solid #3a4250;
+  color: #f4f8fb;
+  font-size: 12px;
+  background: #292e39;
+  border: 1px solid rgb(255 255 255 / 10%);
   border-radius: 7px;
 }
 
@@ -1036,8 +1035,9 @@ button {
 
 .library-row {
   justify-content: space-between;
-  padding: 0 11px 0 12px;
-  font-size: 14px;
+  padding: 0 12px;
+  font-size: 13px;
+  border-bottom: 0;
 }
 
 .sidebar-actions {
@@ -1045,11 +1045,11 @@ button {
 }
 
 .sidebar-actions button {
-  width: 34px;
-  height: 32px;
+  width: 36px;
+  height: 34px;
   color: #f5f7fb;
-  background: #272e3a;
-  border: 1px solid #3a4250;
+  background: #292e39;
+  border: 1px solid rgb(255 255 255 / 10%);
   border-radius: 7px;
 }
 
@@ -1058,12 +1058,12 @@ button {
   align-items: center;
   gap: 8px;
   height: 32px;
-  margin: 9px 12px 14px;
-  padding: 0 11px;
-  color: #b5becc;
+  margin: 10px 12px 12px;
+  padding: 0 10px;
+  color: #9ba7b5;
   background: #1d232d;
-  border: 1px solid #363f4d;
-  border-radius: 6px;
+  border: 1px solid rgb(255 255 255 / 10%);
+  border-radius: 7px;
 }
 
 .sidebar-search input {
@@ -1078,13 +1078,15 @@ button {
 .desktop-video-list {
   min-height: 0;
   overflow: auto;
-  padding: 0 0 10px;
+  padding: 10px;
 }
 
 .desktop-video-item {
   width: 100%;
-  gap: 11px;
-  padding: 9px 12px 9px 18px;
+  display: grid;
+  grid-template-columns: 84px minmax(0, 1fr);
+  gap: 10px;
+  padding: 8px;
   color: white;
   text-align: left;
   background: transparent;
@@ -1100,9 +1102,8 @@ button {
 
 .thumb {
   position: relative;
-  flex: 0 0 auto;
-  width: 72px;
-  height: 46px;
+  width: 84px;
+  aspect-ratio: 16 / 9;
   overflow: hidden;
   background:
     linear-gradient(135deg, rgb(66 215 202 / 85%), rgb(41 83 136 / 90%)),
@@ -1305,10 +1306,10 @@ button {
 
 .downloads-view {
   min-height: 0;
-  overflow: auto;
   display: grid;
   grid-template-rows: auto auto minmax(0, 1fr);
   gap: 18px;
+  overflow: auto;
   padding: 28px 34px;
   color: #172033;
   background: #f7fafc;
@@ -1353,20 +1354,27 @@ button {
 }
 
 .bulk-actions {
-  gap: 10px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
   margin: 0;
+  flex-wrap: wrap;
 }
 
 .bulk-actions button {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  height: 34px;
-  padding: 0 13px;
+  justify-content: center;
+  gap: 8px;
+  min-height: 36px;
+  padding: 0 16px;
   color: #5d9dfb;
+  font-size: 14px;
+  font-weight: 500;
   background: #edf5ff;
   border: 0;
   border-radius: 7px;
+  white-space: nowrap;
 }
 
 .bulk-actions .danger,
@@ -1377,12 +1385,16 @@ button {
 .download-task-list {
   display: grid;
   align-content: start;
+  min-height: 0;
   gap: 0;
 }
 
 .download-row {
-  justify-content: space-between;
-  gap: 16px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  min-width: 0;
+  gap: 14px;
   padding: 14px 0;
   background: transparent;
   border: 0;
@@ -1392,14 +1404,23 @@ button {
 
 .download-meta {
   display: grid;
-  flex: 1;
   gap: 8px;
   min-width: 0;
 }
 
+.download-meta strong {
+  display: block;
+  overflow: hidden;
+  color: #172033;
+  font-size: 14px;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .download-meta span {
-  color: #687385;
-  font-size: 13px;
+  color: #66758a;
+  font-size: 12px;
 }
 
 .progress,
@@ -1418,33 +1439,38 @@ button {
 }
 
 .row-actions {
+  display: flex;
   gap: 8px;
 }
 
-.row-actions button,
-.finished-actions button {
-  width: 36px;
+.row-actions button {
+  width: 40px;
   height: 36px;
   color: #f4f8fb;
   background: #292e39;
+  border: 1px solid rgb(255 255 255 / 10%);
   border-radius: 7px;
 }
 
 .finished-table {
   display: grid;
+  align-self: start;
+  overflow: hidden;
   background: white;
-  border: 1px solid #e4eaf3;
+  border: 1px solid #d8e0e8;
   border-radius: 8px;
 }
 
 .finished-row {
   display: grid;
-  grid-template-columns: minmax(0, 1.5fr) 120px 180px 132px;
+  grid-template-columns: minmax(220px, 1.6fr) 120px 180px 132px;
   align-items: center;
-  gap: 16px;
+  gap: 18px;
   min-height: 52px;
-  padding: 0 16px;
-  border-bottom: 1px solid #eef2f7;
+  padding: 0 18px;
+  color: #172033;
+  font-size: 14px;
+  border-bottom: 1px solid #d8e0e8;
 }
 
 .finished-row:last-child {
@@ -1452,18 +1478,29 @@ button {
 }
 
 .finished-row.header {
-  min-height: 44px;
-  color: #6a7486;
-  font-weight: 700;
-  background: #f6f8fb;
+  min-height: 50px;
+  color: #425267;
+  font-weight: 500;
+  background: #fbfdff;
 }
 
 .finished-actions {
-  gap: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+}
+
+.finished-actions button {
+  width: 32px;
+  height: 32px;
+  color: #172033;
+  background: #f3f7fa;
+  border-radius: 7px;
 }
 
 .finished-actions .clear {
-  color: #d9444d;
+  color: #d14b55;
 }
 
 .mobile-wrap {
