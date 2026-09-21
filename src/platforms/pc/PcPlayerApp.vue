@@ -1,1152 +1,281 @@
 <script setup lang="ts">
 import 'element-plus/dist/index.css';
-import '@/app-ui/assets/port-utilities.css';
 
-import { computed, onBeforeMount, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
-import { ElConfigProvider, ElMessage } from 'element-plus';
+import { ElButton, ElConfigProvider, ElInput, ElMessage, ElTable, ElTableColumn, ElTag } from 'element-plus';
 import {
-  Back,
   CaretRight,
   Close,
   Delete,
   Download,
   FolderOpened,
   FullScreen,
-  House,
   Minus,
-  MoreFilled,
   Plus,
-  Platform,
-  RefreshLeft,
-  RefreshRight,
   Search,
   Sort,
-  Star,
   VideoPause
 } from '@element-plus/icons-vue';
-import ArtPlayer from '@/app-ui/components/Artplayer/ArtPlayer.vue';
-import { usePlayerStore } from '@/app-ui/stores/playerStory';
-import { downloadVideoUrl, probeVideoDownload } from '@/app-ui/services/api';
-import { type VideoItem as PlayerVideoItem } from '@/app-ui/common/types';
+import { ArtPlayer } from '@/features/player/usePlayerWorkspace';
+import { useProvidedPlayerWorkspace } from '@/features/player/workspaceContext';
+import { getPlatformAdapter } from '@/app-ui/adapters';
 
-type DownloadTab = 'downloading' | 'finished';
-type DesktopView = 'video' | 'downloads';
-type MobilePage = 'home' | 'downloads' | 'player';
-type TaskStatus = 'downloading' | 'paused';
+const workspace = useProvidedPlayerWorkspace();
 
-interface DisplayVideo {
-  id: string;
-  title: string;
-  source: '本地文件' | '网络地址' | '输入地址' | '流媒体' | '网络分片';
-  duration: string;
-  quality: string;
-  downloadable: boolean;
-  native?: PlayerVideoItem;
-}
+const windowApi = getPlatformAdapter().window;
 
-interface DownloadTask {
-  id: string;
-  title: string;
-  savePath: string;
-  progress: number;
-  speed?: string;
-  remainingTime?: string;
-  status: TaskStatus;
-}
-
-interface FinishedRecord {
-  id: string;
-  title: string;
-  size: string;
-  completedAt: string;
-  filePath?: string;
-}
-
-const sampleVideos: DisplayVideo[] = [
-  {
-    id: 'video-x36xfzz',
-    title: 'x36xfzz.m3u8',
-    source: '网络分片',
-    duration: '00:10:34',
-    quality: '自动',
-    downloadable: false
-  },
-  {
-    id: 'video-city-night',
-    title: '夜色城市旅行指南.mp4',
-    source: '本地文件',
-    duration: '29:32',
-    quality: '1080P',
-    downloadable: true
-  },
-  {
-    id: 'video-product-demo',
-    title: '产品演示短片.mp4',
-    source: '网络地址',
-    duration: '12:20',
-    quality: '720P',
-    downloadable: true
-  },
-  {
-    id: 'video-live-replay',
-    title: '直播回放片段.m3u8',
-    source: '流媒体',
-    duration: '41:08',
-    quality: '自动',
-    downloadable: false
-  }
-];
-
-const playerStore = usePlayerStore();
-
-const desktopView = ref<DesktopView>('video');
-const downloadTab = ref<DownloadTab>('downloading');
-const mobilePage = ref<MobilePage>('home');
-const previousMobilePage = ref<MobilePage>('home');
-const urlInput = ref('https://media.example.com/city-night.mp4');
-const searchKeyword = ref('');
-const selectedVideoId = ref('video-x36xfzz');
-const isMobileViewport = ref(false);
-const isDraggingFiles = ref(false);
-const homeSelecting = ref(false);
-const selectedHomeVideos = ref<Set<string>>(new Set());
-const selectedFinishedRecords = ref<Set<string>>(new Set());
-const isCheckingDownload = ref(false);
-const isDownloading = ref(false);
-const playerDownloadable = ref(false);
-const playerDownloadName = ref<string>();
-const scanPopoverOpen = ref(false);
-let dragDepth = 0;
-
-const downloadTasks = ref<DownloadTask[]>([
-  {
-    id: 'download-city-night',
-    title: '夜色城市旅行指南.mp4',
-    savePath: 'D:\\Movies\\Downloads',
-    progress: 68,
-    speed: '2.4MB/s',
-    status: 'downloading'
-  },
-  {
-    id: 'download-product-demo',
-    title: '产品演示短片.mp4',
-    savePath: 'D:\\Movies\\Downloads',
-    progress: 34,
-    speed: '1.1MB/s',
-    remainingTime: '01:12',
-    status: 'downloading'
-  }
-]);
-
-const finishedRecords = ref<FinishedRecord[]>([
-  {
-    id: 'finished-x36xfzz',
-    title: 'x36xfzz_1080p',
-    size: '约 184 MB',
-    completedAt: '2026-09-01 21:32',
-    filePath: 'D:\\Movies\\Downloads\\x36xfzz_1080p.mp4'
-  },
-  {
-    id: 'finished-demo-course',
-    title: 'demo_course_hls',
-    size: '92 MB',
-    completedAt: '2026-09-01 20:18',
-    filePath: 'D:\\Movies\\Downloads\\demo_course_hls.mp4'
-  }
-]);
-
-const selectedVideo = computed(() => videos.value.find((video) => video.id === selectedVideoId.value));
-const currentVideo = computed(() => playerStore.currentVideo);
-const hasPlayingVideo = computed(() => Boolean(currentVideo.value?.videoPath));
-const sidebarVideoCount = computed(() => Math.max(videos.value.length, 12));
-
-const videos = computed<DisplayVideo[]>(() => {
-  const list = playerStore.sortedVideoList.map((item) => ({
-    id: item.id,
-    title: item.videoName,
-    source: getVideoSource(item),
-    duration: formatDuration(item.meta?.duration ?? 0),
-    quality: item.meta?.resolution ?? '自动',
-    downloadable: isDownloadablePath(item.realPath ?? item.videoPath ?? ''),
-    native: item
-  }));
-
-  return list.length > 0 ? list : sampleVideos;
-});
-
-const filteredVideos = computed(() => {
-  const keyword = searchKeyword.value.trim().toLowerCase();
-  if (!keyword) return videos.value;
-  return videos.value.filter((video) => video.title.toLowerCase().includes(keyword));
-});
-
-const mobileVideos = computed(() => {
-  if (playerStore.sortedVideoList.length > 0) return videos.value;
-  return [
-    sampleVideos.find((video) => video.id === 'video-city-night'),
-    sampleVideos.find((video) => video.id === 'video-live-replay'),
-    sampleVideos.find((video) => video.id === 'video-product-demo')
-  ].filter((video): video is DisplayVideo => Boolean(video));
-});
-
-const finishedSelectAllLabel = computed(() => {
-  const selectedCount = selectedFinishedRecords.value.size;
-  return selectedCount > 0 && selectedCount === finishedRecords.value.length ? '取消全选' : '全选';
-});
-
-const showMobileDeleteBar = computed(() => {
-  return (
-    homeSelecting.value ||
-    (mobilePage.value === 'downloads' &&
-      downloadTab.value === 'finished' &&
-      selectedFinishedRecords.value.size > 0)
-  );
-});
-
-const downloadStateText = computed(() => {
-  if (isCheckingDownload.value) return '正在探测：确认资源是否可保存到本地';
-  if (playerDownloadable.value) return '已探测：单文件资源，可保存到本地';
-  return '已探测：非单文件资源，不展示下载入口';
-});
-
-const updateViewport = (): void => {
-  isMobileViewport.value = window.matchMedia('(max-width: 820px)').matches;
+const handleDownload = async (): Promise<void> => {
+  const ok = await workspace.handlePlayerDownload();
+  if (ok) ElMessage.success('视频已保存到本地');
+  else if (workspace.playerDownloadable.value) ElMessage.error('视频下载失败，请稍后重试');
 };
-
-onBeforeMount(() => {
-  void playerStore.initStore();
-});
-
-onMounted(() => {
-  updateViewport();
-  window.addEventListener('resize', updateViewport);
-  window.addEventListener('dragenter', handleDragEnter);
-  window.addEventListener('dragover', handleDragOver);
-  window.addEventListener('dragleave', handleDragLeave);
-  window.addEventListener('drop', handleDrop);
-});
-
-onBeforeUnmount(() => {
-  window.removeEventListener('resize', updateViewport);
-  window.removeEventListener('dragenter', handleDragEnter);
-  window.removeEventListener('dragover', handleDragOver);
-  window.removeEventListener('dragleave', handleDragLeave);
-  window.removeEventListener('drop', handleDrop);
-});
-
-watch(
-  () => playerStore.currentVideo,
-  async (video) => {
-    playerDownloadable.value = false;
-    playerDownloadName.value = video?.videoName;
-    if (!video?.realPath || !/^https?:\/\//i.test(video.realPath)) {
-      playerDownloadable.value = Boolean(video?.realPath && isDownloadablePath(video.realPath));
-      return;
-    }
-
-    isCheckingDownload.value = true;
-    try {
-      const result = await probeVideoDownload(video.realPath);
-      if (playerStore.currentVideo?.id !== video.id) return;
-      playerDownloadable.value = result.downloadable;
-      playerDownloadName.value = result.fileName || video.videoName;
-    } catch (error) {
-      console.error('视频下载能力探测失败:', error);
-      playerDownloadable.value = isDownloadablePath(video.realPath);
-    } finally {
-      if (playerStore.currentVideo?.id === video.id) isCheckingDownload.value = false;
-    }
-  },
-  { immediate: true }
-);
-
-watch(
-  () => [mobilePage.value, downloadTab.value] as const,
-  ([page, tab]) => {
-    if (page !== 'downloads' || tab !== 'finished') {
-      selectedFinishedRecords.value = new Set();
-    }
-  }
-);
-
-function getVideoSource(video: PlayerVideoItem): DisplayVideo['source'] {
-  const path = video.realPath ?? video.videoPath ?? '';
-  if (/\.m3u8($|\?|#)/i.test(path)) return video.type === 'url' ? '流媒体' : '网络分片';
-  if (video.type === 'url') return '网络地址';
-  return '本地文件';
-}
-
-function isDownloadablePath(path: string): boolean {
-  return /\.(mp4|mov|webm|m4v)(\?|#|$)/i.test(path);
-}
-
-function formatDuration(seconds: number): string {
-  if (!seconds || seconds < 0) return '00:00';
-  const total = Math.floor(seconds);
-  const h = Math.floor(total / 3600);
-  const m = Math.floor((total % 3600) / 60);
-  const s = total % 60;
-  return h > 0
-    ? `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
-    : `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
-}
-
-function submitUrl(): void {
-  const url = urlInput.value.trim();
-  if (!url) return;
-  const title = getUrlTitle(url);
-  selectedVideoId.value = `url-${Date.now()}`;
-  void playerStore.handleOpenUrl(url);
-  if (isMobileViewport.value) openMobilePlayer({ title, source: '输入地址', downloadable: isDownloadablePath(url) });
-}
-
-function getUrlTitle(url: string): string {
-  try {
-    return decodeURIComponent(new URL(url).pathname.split('/').pop() || '网络视频.mp4');
-  } catch {
-    return url.split('/').pop() || '网络视频.mp4';
-  }
-}
-
-function getDisplayTitle(title?: string): string {
-  return (title || '网络视频').replace(/\.(mp4|mov|webm|m4v|m3u8)$/i, '');
-}
-
-async function openLocalFile(): Promise<void> {
-  await playerStore.handleLocalFile();
-  desktopView.value = 'video';
-  if (isMobileViewport.value && playerStore.currentVideo) {
-    mobilePage.value = 'player';
-  }
-}
-
-async function playVideo(video: DisplayVideo): Promise<void> {
-  selectedVideoId.value = video.id;
-  desktopView.value = 'video';
-  if (video.native) {
-    await playerStore.playVideo(video.native);
-  }
-}
-
-async function openMobilePlayer(video: DisplayVideo | Pick<DisplayVideo, 'title' | 'source' | 'downloadable'>): Promise<void> {
-  previousMobilePage.value = mobilePage.value === 'player' ? previousMobilePage.value : mobilePage.value;
-  if ('id' in video) await playVideo(video);
-  playerDownloadable.value = video.downloadable;
-  playerDownloadName.value = video.title;
-  mobilePage.value = 'player';
-}
-
-function setMobilePage(page: MobilePage): void {
-  mobilePage.value = page;
-  if (page !== 'downloads') {
-    selectedFinishedRecords.value = new Set();
-  }
-}
-
-function backFromPlayer(): void {
-  mobilePage.value = previousMobilePage.value;
-}
-
-function pauseAllDownloads(): void {
-  downloadTasks.value = downloadTasks.value.map((task) => ({ ...task, status: 'paused' }));
-}
-
-function startAllDownloads(): void {
-  downloadTasks.value = downloadTasks.value.map((task) => ({ ...task, status: 'downloading' }));
-}
-
-function deleteAllDownloads(): void {
-  downloadTasks.value = [];
-}
-
-function toggleTaskStatus(id: string): void {
-  downloadTasks.value = downloadTasks.value.map((task) =>
-    task.id === id
-      ? { ...task, status: task.status === 'downloading' ? 'paused' : 'downloading' }
-      : task
-  );
-}
-
-function deleteTask(id: string): void {
-  downloadTasks.value = downloadTasks.value.filter((task) => task.id !== id);
-}
-
-function clearFinishedRecords(): void {
-  finishedRecords.value = [];
-  selectedFinishedRecords.value = new Set();
-}
-
-function clearFinishedRecord(id: string): void {
-  finishedRecords.value = finishedRecords.value.filter((record) => record.id !== id);
-  const next = new Set(selectedFinishedRecords.value);
-  next.delete(id);
-  selectedFinishedRecords.value = next;
-}
-
-function toggleFinishedRecord(id: string): void {
-  const next = new Set(selectedFinishedRecords.value);
-  if (next.has(id)) next.delete(id);
-  else next.add(id);
-  selectedFinishedRecords.value = next;
-}
-
-function toggleFinishedSelectAll(): void {
-  const allSelected =
-    finishedRecords.value.length > 0 && selectedFinishedRecords.value.size === finishedRecords.value.length;
-  selectedFinishedRecords.value = allSelected
-    ? new Set()
-    : new Set(finishedRecords.value.map((record) => record.id));
-}
-
-function startHomeSelection(): void {
-  homeSelecting.value = true;
-  selectedHomeVideos.value = new Set();
-}
-
-function cancelHomeSelection(): void {
-  homeSelecting.value = false;
-  selectedHomeVideos.value = new Set();
-}
-
-function toggleHomeVideo(id: string): void {
-  const next = new Set(selectedHomeVideos.value);
-  if (next.has(id)) next.delete(id);
-  else next.add(id);
-  selectedHomeVideos.value = next;
-}
-
-function selectAllHomeVideos(): void {
-  homeSelecting.value = true;
-  selectedHomeVideos.value = new Set(mobileVideos.value.map((video) => video.id));
-}
-
-async function deleteSelectedMobileItems(): Promise<void> {
-  if (mobilePage.value === 'downloads' && downloadTab.value === 'finished') {
-    finishedRecords.value = finishedRecords.value.filter((record) => !selectedFinishedRecords.value.has(record.id));
-    selectedFinishedRecords.value = new Set();
-    return;
-  }
-
-  await Promise.all(
-    Array.from(selectedHomeVideos.value).map(async (id) => {
-      if (playerStore.videoList.some((video) => video.id === id)) {
-        await playerStore.removeVideoById(id);
-      }
-    })
-  );
-  cancelHomeSelection();
-}
-
-async function handlePlayerDownload(): Promise<void> {
-  const video = playerStore.currentVideo;
-  if (!video?.realPath || !playerDownloadable.value || isDownloading.value) {
-    desktopView.value = 'downloads';
-    mobilePage.value = 'downloads';
-    return;
-  }
-
-  isDownloading.value = true;
-  try {
-    const result = await downloadVideoUrl(video.realPath, playerDownloadName.value || video.videoName);
-    if (!result.canceled) {
-      const savedPath = result.filePath || result.entryPath || result.outputDir;
-      const nextRecord: FinishedRecord = {
-        id: `finished-${Date.now()}`,
-        title: playerDownloadName.value || video.videoName,
-        size: result.segmentCount ? `${result.segmentCount} 个分片` : '已保存',
-        completedAt: new Date().toLocaleString('zh-CN', { hour12: false })
-      };
-      if (savedPath) nextRecord.filePath = savedPath;
-      finishedRecords.value.unshift(nextRecord);
-      ElMessage.success('视频已保存到本地');
-    }
-    desktopView.value = 'downloads';
-    mobilePage.value = 'downloads';
-    downloadTab.value = 'finished';
-  } catch (error) {
-    console.error('视频下载失败:', error);
-    ElMessage.error('视频下载失败，请稍后重试');
-  } finally {
-    isDownloading.value = false;
-  }
-}
-
-const hasFiles = (event: DragEvent): boolean => Array.from(event.dataTransfer?.types ?? []).includes('Files');
-
-function handleDragEnter(event: DragEvent): void {
-  if (!hasFiles(event)) return;
-  event.preventDefault();
-  dragDepth += 1;
-  isDraggingFiles.value = true;
-}
-
-function handleDragOver(event: DragEvent): void {
-  if (!hasFiles(event)) return;
-  event.preventDefault();
-  if (event.dataTransfer) event.dataTransfer.dropEffect = 'copy';
-}
-
-function handleDragLeave(event: DragEvent): void {
-  if (!hasFiles(event)) return;
-  event.preventDefault();
-  dragDepth = Math.max(0, dragDepth - 1);
-  if (dragDepth === 0) isDraggingFiles.value = false;
-}
-
-function handleDrop(event: DragEvent): void {
-  event.preventDefault();
-  dragDepth = 0;
-  isDraggingFiles.value = false;
-  const files = Array.from(event.dataTransfer?.files ?? []);
-  if (files.length > 0) void playerStore.handleDroppedFiles(files);
-}
-
-const scanState = reactive({
-  path: '/storage/emulated/0/Movies',
-  autoScan: true
-});
 </script>
 
 <template>
   <el-config-provider>
-    <div class="v1-player-app">
-      <section v-if="!isMobileViewport" class="desktop-window" aria-label="影音播放器桌面端">
-        <header class="desktop-titlebar">
-          <div class="brand">
-            <div class="brand-mark"><el-icon><CaretRight /></el-icon></div>
-            <strong>影音播放器</strong>
-          </div>
-          <div class="window-actions" aria-label="窗口控制">
-            <button type="button" aria-label="最小化" title="最小化"><el-icon><Minus /></el-icon></button>
-            <button type="button" aria-label="最大化" title="最大化"><el-icon><FullScreen /></el-icon></button>
-            <button class="close" type="button" aria-label="关闭" title="关闭"><el-icon><Close /></el-icon></button>
-          </div>
-        </header>
+    <section class="grid h-screen w-screen grid-rows-[60px_minmax(0,1fr)] overflow-hidden bg-[#171a21] text-slate-50">
+      <header class="flex items-center justify-between border-b border-white/10 bg-[#1b1f28] px-5">
+        <div class="flex items-center gap-3 text-xl font-semibold">
+          <span class="grid h-9 w-9 place-items-center rounded-xl bg-teal-300 text-slate-950">
+            <el-icon><CaretRight /></el-icon>
+          </span>
+          <strong>影音播放器</strong>
+        </div>
+        <div class="flex items-center gap-1">
+          <button class="pc-window-btn" type="button" aria-label="最小化" @click="windowApi.minimize">
+            <el-icon><Minus /></el-icon>
+          </button>
+          <button class="pc-window-btn" type="button" aria-label="最大化" @click="windowApi.maximize">
+            <el-icon><FullScreen /></el-icon>
+          </button>
+          <button class="pc-window-btn hover:bg-red-500" type="button" aria-label="关闭" @click="windowApi.close">
+            <el-icon><Close /></el-icon>
+          </button>
+        </div>
+      </header>
 
-        <div class="desktop-body">
-          <aside class="desktop-sidebar">
-            <nav class="view-tabs" aria-label="功能导航">
-              <button
-                type="button"
-                :class="{ active: desktopView === 'video' }"
-                @click="desktopView = 'video'"
-              >
-                视频
-              </button>
-              <button
-                type="button"
-                :class="{ active: desktopView === 'downloads' }"
-                @click="desktopView = 'downloads'"
-              >
-                下载
-              </button>
-            </nav>
+      <div class="grid min-h-0 grid-cols-[260px_minmax(0,1fr)]">
+        <aside class="grid min-h-0 grid-rows-[58px_auto_minmax(0,1fr)] border-r border-white/10 bg-[#11141a]">
+          <nav class="grid grid-cols-2 gap-2 border-b border-white/10 p-3">
+            <button
+              class="pc-tab"
+              :class="{ 'pc-tab-active': workspace.desktopView.value === 'video' }"
+              type="button"
+              @click="workspace.desktopView.value = 'video'"
+            >
+              视频
+            </button>
+            <button
+              class="pc-tab"
+              :class="{ 'pc-tab-active': workspace.desktopView.value === 'downloads' }"
+              type="button"
+              @click="workspace.desktopView.value = 'downloads'"
+            >
+              下载
+            </button>
+          </nav>
 
-            <div class="library-head">
-              <div class="library-row">
-                <strong>共 {{ sidebarVideoCount }} 个视频</strong>
-                <div class="sidebar-actions">
-                  <button type="button" aria-label="添加" title="添加" @click="openLocalFile">
-                    <el-icon><Plus /></el-icon>
-                  </button>
-                  <button type="button" aria-label="删除" title="删除" @click="playerStore.deleteAllVideos">
-                    <el-icon><Delete /></el-icon>
-                  </button>
-                  <button type="button" aria-label="排序" title="排序" @click="playerStore.toggleSortDate">
-                    <el-icon><Sort /></el-icon>
-                  </button>
-                </div>
+          <section class="grid gap-3 border-b border-white/10 p-3">
+            <div class="flex items-center justify-between gap-2">
+              <strong class="truncate text-sm font-medium">共 {{ workspace.sidebarVideoCount.value }} 个视频</strong>
+              <div class="flex shrink-0 gap-1.5">
+                <button class="pc-icon-btn" type="button" aria-label="添加" @click="workspace.openLocalFile">
+                  <el-icon><Plus /></el-icon>
+                </button>
+                <button class="pc-icon-btn" type="button" aria-label="删除" @click="workspace.playerStore.deleteAllVideos">
+                  <el-icon><Delete /></el-icon>
+                </button>
+                <button class="pc-icon-btn" type="button" aria-label="排序" @click="workspace.playerStore.toggleSortDate">
+                  <el-icon><Sort /></el-icon>
+                </button>
               </div>
-
-              <label class="sidebar-search">
-                <el-icon><Search /></el-icon>
-                <input v-model="searchKeyword" aria-label="搜索列表视频" placeholder="搜索列表视频" />
-              </label>
             </div>
+            <label class="flex h-8 items-center gap-2 rounded-lg border border-white/10 bg-slate-800 px-3 text-slate-400">
+              <el-icon><Search /></el-icon>
+              <input
+                v-model="workspace.searchKeyword.value"
+                class="min-w-0 flex-1 bg-transparent text-xs text-white outline-none"
+                aria-label="搜索列表视频"
+                placeholder="搜索列表视频"
+              />
+            </label>
+          </section>
 
-            <div class="desktop-video-list" aria-label="视频列表">
-              <button
-                v-for="video in filteredVideos"
-                :key="video.id"
-                class="desktop-video-item"
-                :class="{ active: selectedVideoId === video.id }"
-                type="button"
-                @click="playVideo(video)"
-              >
-                <span class="thumb" :data-time="video.duration"></span>
-                <span class="video-meta">
-                  <strong>{{ video.title }}</strong>
-                  <span>{{ video.source }} · {{ video.quality }} · {{ video.downloadable ? '可下载' : '继续播放' }}</span>
+          <section class="min-h-0 overflow-auto p-2">
+            <button
+              v-for="video in workspace.filteredVideos.value"
+              :key="video.id"
+              class="grid w-full grid-cols-[84px_minmax(0,1fr)] gap-2.5 rounded-lg border border-transparent p-2 text-left hover:border-teal-300 hover:bg-teal-300/10"
+              :class="{ 'border-teal-300 bg-teal-300/10': workspace.selectedVideoId.value === video.id }"
+              type="button"
+              @click="workspace.playVideo(video)"
+            >
+              <span class="pc-thumb" :data-time="video.duration"></span>
+              <span class="grid min-w-0 gap-1">
+                <strong class="truncate text-sm font-medium">{{ video.title }}</strong>
+                <span class="truncate text-xs text-slate-400">
+                  {{ video.source }} · {{ video.quality }} · {{ video.downloadable ? '可下载' : '继续播放' }}
                 </span>
+              </span>
+            </button>
+          </section>
+        </aside>
+
+        <main class="relative min-h-0 min-w-0 overflow-hidden">
+          <section
+            v-show="workspace.desktopView.value === 'video'"
+            class="absolute inset-0 overflow-hidden bg-[radial-gradient(circle_at_58%_42%,rgba(45,212,191,.28),transparent_18%),linear-gradient(130deg,#2233a6,#202997_32%,#14265d_58%,#101933)]"
+          >
+            <div v-if="workspace.hasPlayingVideo.value" class="absolute inset-0 z-10 bg-black">
+              <ArtPlayer
+                :key="workspace.currentVideo.value!.videoPath || 'desktop-player'"
+                :url="workspace.currentVideo.value!.videoPath!"
+                @get-duration="(duration) => workspace.playerStore.updateDuration(duration, workspace.currentVideo.value!)"
+                @playback-error="workspace.playerStore.fallbackToTranscode(workspace.currentVideo.value!)"
+              />
+              <el-button
+                v-if="workspace.playerDownloadable.value"
+                class="absolute right-4 top-4 z-20"
+                :icon="Download"
+                circle
+                :loading="workspace.isDownloading.value"
+                @click="handleDownload"
+              />
+            </div>
+
+            <div v-else class="absolute left-1/2 top-[48%] grid w-[min(620px,calc(100%-64px))] -translate-x-1/2 -translate-y-1/2 place-items-center gap-5 text-center">
+              <div class="grid h-24 w-24 place-items-center rounded-full bg-gradient-to-br from-teal-300 via-blue-500 to-slate-900 text-5xl shadow-2xl">
+                <el-icon><CaretRight /></el-icon>
+              </div>
+              <form class="w-full" @submit.prevent="workspace.submitUrl">
+                <el-input v-model="workspace.urlInput.value" size="large" aria-label="输入视频地址">
+                  <template #prepend>视频地址</template>
+                </el-input>
+              </form>
+              <el-button type="primary" size="large" round :icon="FolderOpened" @click="workspace.openLocalFile">
+                打开文件
+              </el-button>
+            </div>
+          </section>
+
+          <section v-show="workspace.desktopView.value === 'downloads'" class="absolute inset-0 grid grid-rows-[auto_auto_minmax(0,1fr)] gap-5 overflow-auto bg-slate-50 p-8 text-slate-900">
+            <div class="flex gap-8 text-base font-medium">
+              <button
+                class="pc-download-tab"
+                :class="{ 'pc-download-tab-active': workspace.downloadTab.value === 'downloading' }"
+                type="button"
+                @click="workspace.downloadTab.value = 'downloading'"
+              >
+                下载中({{ workspace.downloadTasks.value.length }})
+              </button>
+              <button
+                class="pc-download-tab"
+                :class="{ 'pc-download-tab-active': workspace.downloadTab.value === 'finished' }"
+                type="button"
+                @click="workspace.downloadTab.value = 'finished'"
+              >
+                已完成({{ workspace.finishedRecords.value.length }})
               </button>
             </div>
-          </aside>
 
-          <main class="desktop-main" aria-label="主区域">
-            <section v-show="desktopView === 'video'" class="desktop-video-view">
-              <div v-if="hasPlayingVideo" class="desktop-player-stage">
-                <ArtPlayer
-                  :key="currentVideo!.videoPath || 'desktop-player'"
-                  :url="currentVideo!.videoPath!"
-                  @get-duration="(duration) => playerStore.updateDuration(duration, currentVideo!)"
-                  @playback-error="playerStore.fallbackToTranscode(currentVideo!)"
-                />
-                <button
-                  v-if="playerDownloadable"
-                  class="floating-download"
-                  type="button"
-                  aria-label="下载当前视频"
-                  title="下载当前视频"
-                  :disabled="isDownloading"
-                  @click="handlePlayerDownload"
-                >
-                  <el-icon><Download /></el-icon>
-                </button>
-              </div>
-              <div v-else class="desktop-home-card">
-                <div class="hero-mark"><el-icon><CaretRight /></el-icon></div>
-                <form class="url-form" @submit.prevent="submitUrl">
-                  <label>
-                    <span>视频地址</span>
-                    <input v-model="urlInput" aria-label="输入视频地址" />
-                  </label>
-                </form>
-                <button class="primary-action" type="button" @click="openLocalFile">
-                  <el-icon><FolderOpened /></el-icon>
-                  打开文件
-                </button>
-              </div>
-            </section>
+            <div v-if="workspace.downloadTab.value === 'downloading'" class="flex flex-wrap gap-3">
+              <el-button :icon="VideoPause" @click="workspace.pauseAllDownloads">全部暂停</el-button>
+              <el-button :icon="CaretRight" @click="workspace.startAllDownloads">全部开始</el-button>
+              <el-button type="danger" plain :icon="Delete" @click="workspace.deleteAllDownloads">全部删除</el-button>
+            </div>
+            <div v-else>
+              <el-button type="danger" plain :icon="Delete" @click="workspace.clearFinishedRecords">清空全部记录</el-button>
+            </div>
 
-            <section v-show="desktopView === 'downloads'" class="downloads-view">
-              <div class="download-tabs" role="group" aria-label="下载分类">
-                <button
-                  type="button"
-                  :class="{ active: downloadTab === 'downloading' }"
-                  @click="downloadTab = 'downloading'"
-                >
-                  下载中({{ downloadTasks.length }})
-                </button>
-                <button
-                  type="button"
-                  :class="{ active: downloadTab === 'finished' }"
-                  @click="downloadTab = 'finished'"
-                >
-                  已完成({{ finishedRecords.length }})
-                </button>
-              </div>
-
-              <div v-if="downloadTab === 'downloading'" class="bulk-actions">
-                <button type="button" @click="pauseAllDownloads"><el-icon><VideoPause /></el-icon>全部暂停</button>
-                <button type="button" @click="startAllDownloads"><el-icon><CaretRight /></el-icon>全部开始</button>
-                <button class="danger" type="button" @click="deleteAllDownloads"><el-icon><Delete /></el-icon>全部删除</button>
-              </div>
-
-              <div v-else class="bulk-actions">
-                <button class="danger" type="button" @click="clearFinishedRecords"><el-icon><Delete /></el-icon>清空全部记录</button>
-              </div>
-
-              <div v-if="downloadTab === 'downloading'" class="download-task-list">
-                <article v-for="task in downloadTasks" :key="task.id" class="download-row">
-                  <div class="download-meta">
-                    <strong>{{ task.title }}</strong>
-                    <span>{{ task.progress }}% · {{ task.speed || '已暂停' }} · 保存到 {{ task.savePath }}{{ task.remainingTime ? ` · 剩余 ${task.remainingTime}` : '' }}</span>
-                    <div class="progress"><div :style="{ width: `${task.progress}%` }"></div></div>
-                  </div>
-                  <div class="row-actions">
-                    <button type="button" :aria-label="task.status === 'paused' ? '开始' : '暂停'" :title="task.status === 'paused' ? '开始' : '暂停'" @click="toggleTaskStatus(task.id)">
-                      <el-icon><component :is="task.status === 'paused' ? CaretRight : VideoPause" /></el-icon>
-                    </button>
-                    <button type="button" aria-label="删除" title="删除" @click="deleteTask(task.id)">
-                      <el-icon><Delete /></el-icon>
-                    </button>
-                  </div>
-                </article>
-              </div>
-
-              <div v-else class="finished-table" aria-label="已完成下载记录">
-                <div class="finished-row header">
-                  <span>名称</span>
-                  <span>大小</span>
-                  <span>完成时间</span>
-                  <span>操作</span>
-                </div>
-                <div v-for="record in finishedRecords" :key="record.id" class="finished-row">
-                  <span>{{ record.title }}</span>
-                  <span>{{ record.size }}</span>
-                  <span>{{ record.completedAt }}</span>
-                  <div class="finished-actions">
-                    <button type="button" aria-label="播放" title="播放"><el-icon><CaretRight /></el-icon></button>
-                    <button type="button" aria-label="打开文件位置" title="打开文件位置"><el-icon><FolderOpened /></el-icon></button>
-                    <button class="clear" type="button" aria-label="清除" title="清除" @click="clearFinishedRecord(record.id)">
-                      <el-icon><Delete /></el-icon>
-                    </button>
+            <div v-if="workspace.downloadTab.value === 'downloading'" class="min-h-0">
+              <article
+                v-for="task in workspace.downloadTasks.value"
+                :key="task.id"
+                class="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4 border-b border-slate-200 py-4"
+              >
+                <div class="grid min-w-0 gap-2">
+                  <strong class="truncate text-sm font-medium">{{ task.title }}</strong>
+                  <span class="truncate text-xs text-slate-500">
+                    {{ task.progress }}% · {{ task.speed || '已暂停' }} · 保存到 {{ task.savePath }}{{ task.remainingTime ? ` · 剩余 ${task.remainingTime}` : '' }}
+                  </span>
+                  <div class="h-2 overflow-hidden rounded-full bg-slate-200">
+                    <div class="h-full rounded-full bg-gradient-to-r from-teal-300 to-amber-300" :style="{ width: `${task.progress}%` }"></div>
                   </div>
                 </div>
-              </div>
-            </section>
-          </main>
-        </div>
-      </section>
-
-      <section v-else class="mobile-wrap" aria-label="影音播放器移动端">
-        <section v-show="mobilePage === 'home'" class="mobile-page">
-              <header class="mobile-appbar">
-                <div class="mobile-mark"><el-icon><CaretRight /></el-icon></div>
-                <strong>首页</strong>
-                <button type="button" aria-label="打开扫描功能" title="打开扫描功能" @click="scanPopoverOpen = !scanPopoverOpen">
-                  <el-icon><Plus /></el-icon>
-                </button>
-                <div v-if="scanPopoverOpen" class="scan-popover">
-                  <strong>扫描视频文件</strong>
-                  <span>{{ scanState.path }}</span>
-                  <div class="scan-actions">
-                    <button type="button">选择目录</button>
-                    <button type="button">立即扫描</button>
-                  </div>
-                </div>
-              </header>
-
-              <form class="mobile-url-row" @submit.prevent="submitUrl">
-                <input v-model="urlInput" aria-label="输入视频地址" />
-                <button type="submit" aria-label="搜索并播放"><el-icon><Search /></el-icon></button>
-              </form>
-
-              <div class="mobile-section-head">
-                <span>视频列表</span>
-                <span>{{ homeSelecting ? `已选 ${selectedHomeVideos.size} / ${mobileVideos.length}` : `${mobileVideos.length} 个文件` }}</span>
-              </div>
-
-              <div class="mobile-select-toolbar" :class="{ active: homeSelecting }">
-                <button type="button" @click="startHomeSelection"><el-icon><Delete /></el-icon>批量删除</button>
-                <button type="button" @click="selectAllHomeVideos">全选</button>
-                <button type="button" @click="cancelHomeSelection">取消</button>
-              </div>
-
-              <div class="mobile-video-list">
-                <article
-                  v-for="video in mobileVideos"
-                  :key="video.id"
-                  class="mobile-video-card"
-                  :class="{ selecting: homeSelecting }"
-                  @click="homeSelecting ? toggleHomeVideo(video.id) : openMobilePlayer(video)"
-                >
-                  <input
-                    v-if="homeSelecting"
-                    type="checkbox"
-                    :checked="selectedHomeVideos.has(video.id)"
-                    aria-label="选择视频"
-                    @click.stop="toggleHomeVideo(video.id)"
+                <div class="flex gap-2">
+                  <el-button
+                    :icon="task.status === 'paused' ? CaretRight : VideoPause"
+                    circle
+                    @click="workspace.toggleTaskStatus(task.id)"
                   />
-                  <span class="thumb" :data-time="video.duration"></span>
-                  <span>
-                    <strong>{{ video.title }}</strong>
-                    <em>{{ video.source }} · {{ video.quality }} · {{ video.downloadable ? '单文件可下载' : '无下载入口' }}</em>
-                  </span>
-                </article>
-              </div>
-        </section>
-
-        <section v-show="mobilePage === 'downloads'" class="mobile-page downloads-mobile">
-              <header class="mobile-appbar">
-                <div class="mobile-mark"><el-icon><CaretRight /></el-icon></div>
-                <strong>下载</strong>
-                <button type="button" aria-label="打开扫描功能" title="打开扫描功能" @click="scanPopoverOpen = !scanPopoverOpen">
-                  <el-icon><Plus /></el-icon>
-                </button>
-              </header>
-
-              <div class="mobile-download-tabs" role="group" aria-label="下载页面分类">
-                <button type="button" :class="{ active: downloadTab === 'downloading' }" @click="downloadTab = 'downloading'">下载中</button>
-                <button type="button" :class="{ active: downloadTab === 'finished' }" @click="downloadTab = 'finished'">已完成</button>
-              </div>
-
-              <div v-if="downloadTab === 'downloading'" class="mobile-bulk-actions">
-                <button type="button" @click="pauseAllDownloads"><el-icon><VideoPause /></el-icon>全部暂停</button>
-                <button type="button" @click="startAllDownloads"><el-icon><CaretRight /></el-icon>全部开始</button>
-                <button class="danger" type="button" @click="deleteAllDownloads"><el-icon><Delete /></el-icon>全部删除</button>
-              </div>
-
-              <div v-if="downloadTab === 'downloading'" class="mobile-download-list">
-                <article v-for="task in downloadTasks" :key="task.id" class="mobile-download-card">
-                  <div class="download-card-top">
-                    <input class="mobile-download-check" type="checkbox" aria-label="选择下载任务" :checked="task.id === 'download-city-night'" />
-                    <span>
-                      <strong>{{ task.title }}</strong>
-                      <em>{{ task.remainingTime ? `剩余 ${task.remainingTime}` : `保存到 ${task.savePath}` }}</em>
-                    </span>
-                    <div class="row-actions">
-                      <button type="button" aria-label="暂停下载" @click="toggleTaskStatus(task.id)"><el-icon><VideoPause /></el-icon></button>
-                      <button type="button" aria-label="删除下载" @click="deleteTask(task.id)"><el-icon><Delete /></el-icon></button>
-                    </div>
-                  </div>
-                  <div class="mobile-progress-row">
-                    <div class="mobile-progress"><div :style="{ width: `${task.progress}%` }"></div></div>
-                    <span>{{ task.progress }}% · {{ task.speed || '已暂停' }}</span>
-                  </div>
-                </article>
-              </div>
-
-              <div v-else>
-                <div class="finished-select-row">
-                  <button class="danger" type="button" @click="clearFinishedRecords"><el-icon><Delete /></el-icon>清空记录</button>
-                  <button type="button" @click="toggleFinishedSelectAll">{{ finishedSelectAllLabel }}</button>
+                  <el-button :icon="Delete" circle @click="workspace.deleteTask(task.id)" />
                 </div>
-                <div class="mobile-finished-list">
-                  <article
-                    v-for="record in finishedRecords"
-                    :key="record.id"
-                    class="mobile-finished-card"
-                    :class="{ selected: selectedFinishedRecords.has(record.id) }"
-                    @click="toggleFinishedRecord(record.id)"
-                  >
-                    <span>
-                      <strong>{{ record.title }}</strong>
-                      <em>{{ record.size }} · {{ record.completedAt }}</em>
-                    </span>
-                    <input
-                      type="checkbox"
-                      :checked="selectedFinishedRecords.has(record.id)"
-                      aria-label="选择完成记录"
-                      @click.stop="toggleFinishedRecord(record.id)"
-                    />
-                  </article>
-                </div>
-              </div>
-        </section>
+              </article>
+            </div>
 
-        <section v-show="mobilePage === 'player'" class="mobile-player-page">
-              <div class="mobile-player-hero">
-                <div class="readable-bar">
-                  <button type="button" aria-label="返回" @click="backFromPlayer"><el-icon><Back /></el-icon></button>
-                  <span>
-                    <em>{{ selectedVideo?.source || '输入地址' }}</em>
-                    <strong>{{ currentVideo?.videoName || selectedVideo?.title || getUrlTitle(urlInput) }}</strong>
-                  </span>
-                  <button type="button" aria-label="更多"><el-icon><MoreFilled /></el-icon></button>
-                </div>
-
-                <button
-                  v-if="playerDownloadable"
-                  class="mobile-download-float"
-                  type="button"
-                  aria-label="下载当前视频"
-                  @click="handlePlayerDownload"
-                >
-                  <el-icon><Download /></el-icon>
-                  <span>可下载</span>
-                </button>
-
-                <ArtPlayer
-                  v-if="currentVideo?.videoPath"
-                  :key="currentVideo.videoPath || 'mobile-player'"
-                  :url="currentVideo.videoPath"
-                  @get-duration="(duration) => playerStore.updateDuration(duration, currentVideo!)"
-                  @playback-error="playerStore.fallbackToTranscode(currentVideo!)"
-                />
-                <div v-else class="mock-player-controls">
-                  <button type="button" aria-label="快退十秒"><el-icon><RefreshLeft /></el-icon></button>
-                  <button class="play" type="button" aria-label="播放或暂停"><el-icon><VideoPause /></el-icon></button>
-                  <button type="button" aria-label="快进十秒"><el-icon><RefreshRight /></el-icon></button>
-                </div>
-
-                <div class="mobile-player-bottom">
-                  <div class="mobile-progress-meta"><span>12:48</span><span>29:32</span></div>
-                  <div class="mobile-player-progress"><div></div></div>
-                </div>
-              </div>
-
-              <div class="mobile-player-info">
-                <div class="download-state">{{ downloadStateText }}</div>
-                <h3>{{ getDisplayTitle(currentVideo?.videoName || selectedVideo?.title) }}</h3>
-                <p>播放页浮层使用深色半透明底和文字阴影，保证在亮色、暗色、复杂画面下都可读。</p>
-                <div class="mobile-player-actions">
-                  <button type="button"><el-icon><Star /></el-icon><span>喜欢</span></button>
-                  <button type="button"><el-icon><Platform /></el-icon><span>投屏</span></button>
-                  <button type="button"><el-icon><FullScreen /></el-icon><span>全屏</span></button>
-                </div>
-              </div>
-        </section>
-
-        <nav v-if="!showMobileDeleteBar" class="bottom-nav" aria-label="底部导航">
-              <button type="button" :class="{ active: mobilePage === 'home' }" @click="setMobilePage('home')">
-                <el-icon><House /></el-icon><span>首页</span>
-              </button>
-              <button type="button" :class="{ active: mobilePage === 'downloads' }" @click="setMobilePage('downloads')">
-                <el-icon><Download /></el-icon><span>下载</span>
-              </button>
-        </nav>
-
-        <div v-if="showMobileDeleteBar" class="bottom-delete-bar">
-              <button type="button" @click="deleteSelectedMobileItems"><el-icon><Delete /></el-icon>删除</button>
-        </div>
-      </section>
-
-      <div v-if="isDraggingFiles" class="drop-overlay">
-        <div class="drop-indicator">释放以播放视频</div>
+            <el-table v-else :data="workspace.finishedRecords.value" height="100%" row-key="id">
+              <el-table-column prop="title" label="名称" min-width="220" show-overflow-tooltip />
+              <el-table-column prop="size" label="大小" width="120" />
+              <el-table-column prop="completedAt" label="完成时间" width="180" />
+              <el-table-column label="操作" width="150" fixed="right">
+                <template #default="{ row }">
+                  <el-button :icon="CaretRight" text circle />
+                  <el-button :icon="FolderOpened" text circle />
+                  <el-button :icon="Delete" text circle type="danger" @click="workspace.clearFinishedRecord(row.id)" />
+                </template>
+              </el-table-column>
+            </el-table>
+          </section>
+        </main>
       </div>
-    </div>
+    </section>
   </el-config-provider>
 </template>
 
 <style scoped>
-.v1-player-app {
-  width: 100vw;
-  height: 100vh;
-  overflow: hidden;
-  color: #f4f8fb;
-  background: #171a21;
-  font-family: "Microsoft YaHei", "PingFang SC", "Helvetica Neue", Arial, sans-serif;
-}
-
-button,
-input {
-  font: inherit;
-}
-
-button {
-  cursor: pointer;
-}
-
-.desktop-window {
-  display: grid;
-  grid-template-rows: 60px minmax(0, 1fr);
-  width: 100vw;
-  height: 100vh;
-  margin: 0;
-  overflow: hidden;
-  background: #171a21;
-  border: 0;
-  border-radius: 0;
-  box-shadow: none;
-}
-
-.desktop-titlebar,
-.brand,
-.window-actions,
-.desktop-body,
-.library-row,
-.sidebar-actions,
-.desktop-video-item,
-.bulk-actions,
-.download-row,
-.finished-actions,
-.mobile-appbar,
-.mobile-section-head,
-.mobile-video-card,
-.download-card-top,
-.mobile-finished-card,
-.bottom-nav {
-  display: flex;
-  align-items: center;
-}
-
-.desktop-titlebar {
-  justify-content: space-between;
-  padding: 0 12px 0 20px;
-  background: linear-gradient(180deg, #1e2129, #191c23);
-  border-bottom: 1px solid rgb(255 255 255 / 10%);
-  user-select: none;
-  -webkit-app-region: drag;
-}
-
-.brand {
-  gap: 12px;
-  font-size: 20px;
-  font-weight: 500;
-}
-
-.brand-mark,
-.hero-mark,
-.mobile-mark {
+.pc-window-btn,
+.pc-icon-btn {
   display: grid;
   place-items: center;
-  color: #061d1b;
-  background: #42d7ca;
-}
-
-.brand-mark {
-  width: 34px;
-  height: 34px;
-  font-size: 18px;
-  border-radius: 10px;
-  box-shadow: 0 0 0 4px rgb(66 215 202 / 10%);
-}
-
-.window-actions {
-  gap: 4px;
-  -webkit-app-region: no-drag;
-}
-
-.window-actions button,
-.sidebar-actions button,
-.row-actions button,
-.finished-actions button,
-.mobile-appbar button,
-.mobile-url-row button,
-.readable-bar button,
-.mock-player-controls button {
-  display: grid;
-  place-items: center;
-  padding: 0;
   color: inherit;
   background: transparent;
   border: 0;
 }
 
-.window-actions button {
+.pc-window-btn {
   width: 38px;
   height: 34px;
-  color: rgb(244 248 251 / 86%);
   border-radius: 6px;
 }
 
-.window-actions button:hover {
-  background: rgb(255 255 255 / 8%);
+.pc-window-btn:hover,
+.pc-icon-btn:hover {
+  background: rgb(255 255 255 / 10%);
 }
 
-.window-actions .close:hover {
-  color: white;
-  background: #d94141;
-}
-
-.desktop-body {
-  min-height: 0;
-  align-items: stretch;
-}
-
-.desktop-sidebar {
-  display: grid;
-  grid-template-rows: 58px auto minmax(0, 1fr);
-  width: 260px;
-  height: 100%;
-  min-height: 0;
-  background: #11141a;
-  border-right: 1px solid rgb(255 255 255 / 10%);
-}
-
-.view-tabs {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 6px;
-  padding: 12px;
-  border-bottom: 1px solid rgb(255 255 255 / 10%);
-}
-
-.view-tabs button,
-.download-tabs button,
-.mobile-download-tabs button {
-  border: 0;
-  transition:
-    color 160ms ease,
-    background-color 160ms ease;
-}
-
-.view-tabs button {
+.pc-tab {
   height: 34px;
-  color: #f4f8fb;
+  color: white;
   font-size: 12px;
   background: #292e39;
   border: 1px solid rgb(255 255 255 / 10%);
   border-radius: 7px;
 }
 
-.view-tabs button.active {
+.pc-tab-active {
   color: #032229;
   background: #42d7ca;
   border-color: #42d7ca;
 }
 
-.library-row {
-  justify-content: space-between;
-  gap: 10px;
-  font-size: 13px;
-  border-bottom: 0;
-}
-
-.library-head {
-  display: grid;
-  gap: 10px;
-  padding: 12px;
-  border-bottom: 1px solid rgb(255 255 255 / 10%);
-}
-
-.library-row strong {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  font-weight: 500;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.sidebar-actions {
-  flex: 0 0 auto;
-  gap: 6px;
-}
-
-.sidebar-actions button {
+.pc-icon-btn {
   width: 36px;
   height: 34px;
-  color: #f5f7fb;
   background: #292e39;
   border: 1px solid rgb(255 255 255 / 10%);
   border-radius: 7px;
 }
 
-.sidebar-search {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  height: 32px;
-  padding: 0 10px;
-  color: #9ba7b5;
-  background: #1d232d;
-  border: 1px solid rgb(255 255 255 / 10%);
-  border-radius: 7px;
-}
-
-.sidebar-search input {
-  width: 100%;
-  min-width: 0;
-  color: white;
-  font-size: 12px;
-  background: transparent;
-  border: 0;
-  outline: 0;
-}
-
-.sidebar-search input::placeholder {
-  color: #d5dde8;
-  opacity: 1;
-}
-
-.desktop-video-list {
-  min-height: 0;
-  overflow: auto;
-  padding: 10px;
-}
-
-.desktop-video-item {
-  width: 100%;
-  display: grid;
-  grid-template-columns: 84px minmax(0, 1fr);
-  gap: 10px;
-  padding: 8px;
-  color: white;
-  text-align: left;
-  background: transparent;
-  border: 1px solid transparent;
-  border-radius: 8px;
-}
-
-.desktop-video-item:hover,
-.desktop-video-item.active {
-  background: rgb(66 215 202 / 9%);
-  border-color: #42d7ca;
-}
-
-.thumb {
+.pc-thumb {
   position: relative;
   width: 84px;
   aspect-ratio: 16 / 9;
@@ -1157,14 +286,7 @@ button {
   border-radius: 6px;
 }
 
-.desktop-video-item:nth-child(2n) .thumb,
-.mobile-video-card:nth-child(2n) .thumb {
-  background:
-    linear-gradient(135deg, rgb(241 189 72 / 72%), rgb(39 65 126 / 86%)),
-    linear-gradient(135deg, #263341, #111826 68%);
-}
-
-.thumb::after {
+.pc-thumb::after {
   position: absolute;
   right: 4px;
   bottom: 3px;
@@ -1176,221 +298,22 @@ button {
   border-radius: 3px;
 }
 
-.video-meta,
-.mobile-video-card span,
-.mobile-finished-card span {
-  display: grid;
-  min-width: 0;
-  gap: 5px;
-}
-
-.video-meta strong,
-.mobile-video-card strong,
-.mobile-finished-card strong {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.video-meta span,
-.mobile-video-card em,
-.mobile-finished-card em {
-  overflow: hidden;
-  color: #9ba7b5;
-  font-size: 12px;
-  font-style: normal;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.desktop-main {
-  position: relative;
-  flex: 1;
-  height: 100%;
-  min-width: 0;
-  min-height: 0;
-  overflow: hidden;
-  background:
-    linear-gradient(180deg, rgb(7 10 18 / 18%), rgb(7 10 18 / 64%)),
-    radial-gradient(circle at 54% 42%, rgb(66 215 202 / 24%), transparent 18%),
-    linear-gradient(130deg, #2233a6 0%, #202997 30%, #14265d 58%, #101933 100%);
-}
-
-.desktop-video-view,
-.desktop-player-stage,
-.downloads-view {
-  position: absolute;
-  inset: 0;
-}
-
-.desktop-video-view {
-  z-index: 1;
-  overflow: hidden;
-}
-
-.desktop-video-view::before {
-  position: absolute;
-  top: -22%;
-  right: -18%;
-  width: 74%;
-  height: 134%;
-  content: "";
-  border: 1px solid rgb(66 215 202 / 34%);
-  border-radius: 50%;
-  box-shadow:
-    inset 22px 0 0 rgb(66 215 202 / 4%),
-    inset 44px 0 0 rgb(77 125 245 / 5%);
-  transform: rotate(-14deg);
-}
-
-.desktop-video-view::after {
-  position: absolute;
-  inset: 0;
-  content: "";
-  pointer-events: none;
-  opacity: 0.56;
-  background: repeating-radial-gradient(circle at 78% 16%, transparent 0 13px, rgb(66 215 202 / 20%) 14px, transparent 15px);
-}
-
-.desktop-home-card {
-  position: absolute;
-  top: 48%;
-  left: 50%;
-  z-index: 1;
-  display: grid;
-  place-items: center;
-  gap: 18px;
-  width: min(620px, calc(100% - 64px));
-  text-align: center;
-  transform: translate(-50%, -50%);
-}
-
-.hero-mark {
-  width: 96px;
-  height: 96px;
-  color: #dffefa;
-  font-size: 42px;
-  background:
-    radial-gradient(circle at 36% 28%, rgb(255 255 255 / 42%), transparent 22%),
-    linear-gradient(145deg, #42d7ca, #426bf0 62%, #15214d);
-  border-radius: 50%;
-  box-shadow:
-    0 20px 60px rgb(0 0 0 / 34%),
-    0 0 0 8px rgb(255 255 255 / 8%);
-}
-
-.url-form {
-  width: min(620px, 100%);
-}
-
-.url-form label {
-  display: grid;
-  grid-template-columns: 98px minmax(0, 1fr);
-  align-items: center;
-  height: 46px;
-  overflow: hidden;
-  color: #172033;
-  background: white;
-  border-radius: 7px;
-}
-
-.url-form span {
-  height: 100%;
-  display: grid;
-  place-items: center;
-  background: #eef3f8;
-  border-right: 1px solid #d8e0ea;
-}
-
-.url-form input {
-  width: 100%;
-  padding: 0 14px;
-  color: #172033;
-  background: transparent;
-  border: 0;
-  outline: 0;
-}
-
-.primary-action {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  height: 42px;
-  padding: 0 25px;
-  color: #061d1b;
-  font-weight: 700;
-  background: #42d7ca;
-  border: 0;
-  border-radius: 999px;
-}
-
-.desktop-player-stage {
-  position: absolute;
-  z-index: 3;
-  background: #05070a;
-}
-
-.desktop-player-stage :deep(.artplayer-app) {
-  width: 100%;
-  height: 100%;
-}
-
-.floating-download {
-  position: absolute;
-  top: 16px;
-  right: 16px;
-  z-index: 20;
-  display: grid;
-  place-items: center;
-  width: 38px;
-  height: 38px;
-  color: white;
-  background: rgb(0 0 0 / 48%);
-  border: 0;
-  border-radius: 8px;
-}
-
-.downloads-view {
-  min-height: 0;
-  display: grid;
-  grid-template-rows: auto auto minmax(0, 1fr);
-  gap: 18px;
-  overflow: auto;
-  padding: 28px 34px;
-  color: #172033;
-  background: #f7fafc;
-  z-index: 4;
-}
-
-.download-tabs {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 28px;
-  width: fit-content;
-  min-width: 260px;
-  border-bottom: 0;
-}
-
-.download-tabs button {
+.pc-download-tab {
   position: relative;
   min-height: 40px;
-  padding: 0;
   color: #172033;
-  font-size: 16px;
-  font-weight: 500;
   background: transparent;
-  white-space: nowrap;
+  border: 0;
 }
 
-.download-tabs button.active {
+.pc-download-tab-active {
   color: #1677ff;
 }
 
-.download-tabs button.active::after {
+.pc-download-tab-active::after {
   position: absolute;
-  right: 0;
-  bottom: 0;
   left: 50%;
+  bottom: 0;
   width: 20px;
   height: 3px;
   content: "";
@@ -1399,858 +322,8 @@ button {
   transform: translateX(-50%);
 }
 
-.bulk-actions {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin: 0;
-  flex-wrap: wrap;
-}
-
-.bulk-actions button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  min-height: 36px;
-  padding: 0 16px;
-  color: #5d9dfb;
-  font-size: 14px;
-  font-weight: 500;
-  background: #edf5ff;
-  border: 0;
-  border-radius: 7px;
-  white-space: nowrap;
-}
-
-.bulk-actions .danger,
-.danger {
-  color: #d9444d;
-}
-
-.download-task-list {
-  display: grid;
-  align-content: start;
-  width: 100%;
-  min-height: 0;
-  gap: 0;
-}
-
-.download-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  min-width: 0;
-  gap: 14px;
-  padding: 14px 0;
-  background: transparent;
-  border: 0;
-  border-bottom: 1px solid #d8e0e8;
-  border-radius: 0;
-}
-
-.download-meta {
-  display: grid;
-  gap: 8px;
-  min-width: 0;
-}
-
-.download-meta strong {
-  display: block;
-  overflow: hidden;
-  color: #172033;
-  font-size: 14px;
-  font-weight: 500;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.download-meta span {
-  display: block;
-  overflow: hidden;
-  color: #66758a;
-  font-size: 12px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.progress,
-.mobile-progress {
-  height: 7px;
-  overflow: hidden;
-  background: rgb(255 255 255 / 10%);
-  border-radius: 999px;
-}
-
-.progress div,
-.mobile-progress div {
-  height: 100%;
-  background: linear-gradient(90deg, #42d7ca, #f4bf45);
-  border-radius: inherit;
-}
-
-.row-actions {
-  display: flex;
-  gap: 8px;
-  flex: 0 0 auto;
-}
-
-.row-actions button {
-  width: 40px;
-  height: 36px;
-  color: #f4f8fb;
-  background: #292e39;
-  border: 1px solid rgb(255 255 255 / 10%);
-  border-radius: 7px;
-}
-
-.finished-table {
-  display: grid;
-  width: 100%;
-  min-width: 0;
-  align-self: start;
-  overflow: hidden;
-  background: white;
-  border: 1px solid #d8e0e8;
-  border-radius: 8px;
-}
-
-.finished-row {
-  display: grid;
-  grid-template-columns: minmax(180px, 1.6fr) minmax(82px, 0.7fr) minmax(132px, 1fr) 116px;
-  align-items: center;
-  gap: 12px;
-  min-height: 52px;
-  min-width: 0;
-  padding: 0 14px 0 18px;
-  color: #172033;
-  font-size: 14px;
-  border-bottom: 1px solid #d8e0e8;
-}
-
-.finished-row > span {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.finished-row:last-child {
-  border-bottom: 0;
-}
-
-.finished-row.header {
-  min-height: 50px;
-  color: #425267;
-  font-weight: 500;
-  background: #fbfdff;
-}
-
-.finished-actions {
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 8px;
-  min-width: 0;
-}
-
-.finished-actions button {
-  width: 32px;
-  height: 32px;
-  color: #172033;
-  background: #f3f7fa;
-  border-radius: 7px;
-}
-
-.finished-actions .clear {
-  color: #d14b55;
-}
-
-@media (max-width: 980px) {
-  .downloads-view {
-    gap: 16px;
-    padding: 24px 20px;
-  }
-
-  .download-row {
-    gap: 10px;
-  }
-
-  .row-actions {
-    gap: 6px;
-  }
-
-  .row-actions button {
-    width: 36px;
-  }
-
-  .finished-row {
-    grid-template-columns: minmax(140px, 1fr) 72px 118px 98px;
-    gap: 6px;
-    padding: 0 10px;
-    font-size: 13px;
-  }
-
-  .finished-actions {
-    gap: 4px;
-  }
-
-  .finished-actions button {
-    width: 30px;
-    height: 30px;
-  }
-}
-
-.mobile-wrap {
-  position: relative;
+:deep(.artplayer-app) {
   width: 100%;
   height: 100%;
-  overflow: hidden;
-  color: #f4f8fb;
-  background: #11141a;
-}
-
-.mobile-page {
-  position: absolute;
-  inset: 0 0 calc(env(safe-area-inset-bottom, 0px) + 64px);
-  overflow: hidden;
-  padding: 0;
-}
-
-.mobile-appbar {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  height: 54px;
-  padding: 8px 16px;
-  background: rgb(29 32 40 / 92%);
-  border-bottom: 1px solid rgb(255 255 255 / 10%);
-  backdrop-filter: blur(14px);
-  z-index: 3;
-}
-
-.mobile-mark {
-  width: 34px;
-  height: 34px;
-  border-radius: 12px;
-}
-
-.mobile-appbar strong {
-  position: absolute;
-  right: 68px;
-  left: 68px;
-  overflow: hidden;
-  font-size: 16px;
-  font-weight: 500;
-  text-align: center;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.mobile-appbar button,
-.mobile-url-row button {
-  width: 40px;
-  height: 40px;
-  color: #f4f8fb;
-  background: #1d222b;
-  border: 1px solid rgb(255 255 255 / 10%);
-  border-radius: 12px;
-}
-
-.scan-popover {
-  position: absolute;
-  top: 46px;
-  right: 0;
-  z-index: 20;
-  display: grid;
-  gap: 10px;
-  width: 250px;
-  padding: 14px;
-  background: #1d222b;
-  border: 1px solid rgb(255 255 255 / 10%);
-  border-radius: 12px;
-  box-shadow: 0 16px 32px rgb(0 0 0 / 28%);
-}
-
-.scan-popover span {
-  color: #9ba7b5;
-  font-size: 12px;
-}
-
-.scan-actions {
-  display: flex;
-  gap: 8px;
-}
-
-.scan-actions button {
-  width: auto;
-  padding: 0 10px;
-}
-
-.mobile-url-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 40px;
-  gap: 8px;
-  margin: 4px 16px 12px;
-}
-
-.mobile-url-row input {
-  min-width: 0;
-  height: 40px;
-  padding: 0 12px;
-  color: white;
-  background: #1d222b;
-  border: 1px solid rgb(255 255 255 / 10%);
-  border-radius: 12px;
-  outline: 0;
-}
-
-.mobile-url-row button {
-  width: 40px;
-  height: 40px;
-  color: #061d1b;
-  background: #42d7ca;
-}
-
-.mobile-section-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 0 16px 9px;
-  font-size: 13px;
-  font-weight: 500;
-}
-
-.mobile-section-head span:last-child {
-  color: #9ba7b5;
-  font-size: 12px;
-}
-
-.mobile-select-toolbar {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 7px;
-  align-items: center;
-  margin: 0 16px 10px;
-  padding: 8px;
-  background: #1d222b;
-  border: 1px solid rgb(255 255 255 / 10%);
-  border-radius: 13px;
-}
-
-.mobile-select-toolbar button,
-.mobile-bulk-actions button,
-.finished-select-row button {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  height: 32px;
-  padding: 0 10px;
-  color: #f4f8fb;
-  background: #1d222b;
-  border: 1px solid rgb(255 255 255 / 10%);
-  border-radius: 999px;
-  justify-content: center;
-  font-size: 12px;
-  white-space: nowrap;
-}
-
-.mobile-select-toolbar:not(.active) button:nth-child(n + 2) {
-  display: none;
-}
-
-.mobile-video-list,
-.mobile-download-list,
-.mobile-finished-list {
-  display: grid;
-  gap: 10px;
-  max-height: calc(100% - 164px);
-  margin: 0;
-  padding: 0 16px 12px;
-  overflow: hidden;
-}
-
-.mobile-video-card,
-.mobile-download-card,
-.mobile-finished-card {
-  gap: 10px;
-  padding: 8px;
-  background: #1d222b;
-  border: 1px solid rgb(255 255 255 / 8%);
-  border-radius: 14px;
-}
-
-.mobile-video-card {
-  display: grid;
-  grid-template-columns: 96px minmax(0, 1fr);
-  align-items: center;
-  min-height: 80px;
-}
-
-.mobile-video-card .thumb {
-  width: 96px;
-  aspect-ratio: 16 / 10;
-  border-radius: 10px;
-}
-
-.mobile-video-card.selecting {
-  grid-template-columns: 24px 96px minmax(0, 1fr);
-}
-
-.mobile-video-card input,
-.mobile-finished-card input {
-  flex: 0 0 auto;
-  width: 18px;
-  height: 18px;
-  accent-color: #42d7ca;
-}
-
-.mobile-download-tabs {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 4px;
-  margin: 10px 16px 12px;
-  padding: 4px;
-  background: #292e39;
-  border-radius: 999px;
-}
-
-.mobile-download-tabs button {
-  height: 36px;
-  color: #9ba7b5;
-  background: #1d222b;
-  border-radius: 999px;
-}
-
-.mobile-download-tabs button.active {
-  color: #061d1b;
-  background: #42d7ca;
-}
-
-.mobile-bulk-actions,
-.finished-select-row {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
-  margin: 0 16px 12px;
-}
-
-.mobile-download-card {
-  display: grid;
-  gap: 8px;
-  padding: 10px;
-  color: #9ba7b5;
-  font-size: 12px;
-}
-
-.download-card-top {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  gap: 9px;
-  align-items: center;
-  justify-content: space-between;
-  color: #f4f8fb;
-  font-size: 14px;
-}
-
-.download-card-top > span {
-  display: grid;
-  min-width: 0;
-}
-
-.download-card-top strong,
-.download-card-top em {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.download-card-top em {
-  margin-top: 4px;
-  color: #9ba7b5;
-  font-size: 11px;
-  font-style: normal;
-}
-
-.mobile-download-card .row-actions {
-  gap: 6px;
-}
-
-.mobile-download-card .row-actions button {
-  width: 30px;
-  height: 30px;
-  border-radius: 9px;
-}
-
-.mobile-download-check {
-  width: 20px;
-  height: 20px;
-  accent-color: #42d7ca;
-}
-
-.mobile-progress-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 8px;
-  align-items: center;
-  color: #9ba7b5;
-  font-size: 11px;
-}
-
-.mobile-progress {
-  height: 6px;
-  background: #292e39;
-}
-
-.mobile-finished-card {
-  justify-content: space-between;
-}
-
-.mobile-finished-card.selected {
-  border-color: #42d7ca;
-  background: rgb(66 215 202 / 11%);
-}
-
-.mobile-player-page {
-  position: relative;
-  height: calc(100% - env(safe-area-inset-bottom, 0px) - 64px);
-  min-height: 0;
-  overflow: hidden;
-  background: #11141a;
-}
-
-.mobile-player-hero {
-  position: relative;
-  height: 46%;
-  min-height: 276px;
-  max-height: 376px;
-  overflow: hidden;
-  background:
-    linear-gradient(180deg, rgb(2 6 23 / 88%), transparent 30%, transparent 55%, rgb(2 6 23 / 92%)),
-    linear-gradient(125deg, #2131a2 0%, #202898 30%, #14245a 58%, #0f1731 100%);
-}
-
-.mobile-player-hero::before {
-  position: absolute;
-  right: -20%;
-  bottom: 17%;
-  width: 82%;
-  height: 32%;
-  content: "";
-  background: rgb(255 255 255 / 24%);
-  border-radius: 999px;
-  filter: blur(28px);
-  transform: rotate(-12deg);
-}
-
-.mobile-player-hero :deep(.artplayer-app) {
-  width: 100%;
-  height: 100%;
-}
-
-.readable-bar {
-  position: absolute;
-  top: calc(env(safe-area-inset-top, 0px) + 14px);
-  right: 12px;
-  left: 12px;
-  z-index: 30;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 9px;
-  padding: 6px;
-  color: white;
-  text-shadow: 0 1px 8px rgb(0 0 0 / 72%);
-  background: linear-gradient(90deg, rgb(2 6 23 / 76%), rgb(2 6 23 / 36%));
-  border-radius: 18px;
-  backdrop-filter: blur(16px);
-}
-
-.readable-bar button {
-  flex: 0 0 auto;
-  width: 36px;
-  height: 36px;
-  color: white;
-  background: rgb(2 6 23 / 54%);
-  border: 1px solid rgb(255 255 255 / 18%);
-  border-radius: 50%;
-  backdrop-filter: blur(16px);
-}
-
-.readable-bar span {
-  display: grid;
-  flex: 1;
-  min-width: 0;
-}
-
-.readable-bar em {
-  color: rgb(248 250 252 / 76%);
-  font-size: 11px;
-  font-style: normal;
-}
-
-.readable-bar strong {
-  color: white;
-  font-size: 13px;
-  font-weight: 500;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.mobile-download-float {
-  position: absolute;
-  top: calc(env(safe-area-inset-top, 0px) + 68px);
-  right: 18px;
-  z-index: 32;
-  display: grid;
-  gap: 5px;
-  justify-items: center;
-  width: auto;
-  height: auto;
-  color: white;
-  text-shadow: 0 1px 8px rgb(0 0 0 / 75%);
-  background: transparent;
-  border: 0;
-}
-
-.mobile-download-float span {
-  font-size: 10px;
-}
-
-.mobile-download-float .el-icon {
-  display: grid;
-  place-items: center;
-  width: 36px;
-  height: 36px;
-  background: rgb(2 6 23 / 54%);
-  border: 1px solid rgb(255 255 255 / 18%);
-  border-radius: 50%;
-  backdrop-filter: blur(16px);
-}
-
-.mock-player-controls {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 20px;
-  z-index: 20;
-}
-
-.mock-player-controls button {
-  width: 36px;
-  height: 36px;
-  color: white;
-  background: rgb(2 6 23 / 54%);
-  border: 1px solid rgb(255 255 255 / 18%);
-  border-radius: 999px;
-  backdrop-filter: blur(16px);
-}
-
-.mock-player-controls .play {
-  width: 64px;
-  height: 64px;
-  color: #0f172a;
-  background: rgb(248 250 252 / 94%);
-  border-color: transparent;
-}
-
-.mobile-player-bottom {
-  position: absolute;
-  right: 16px;
-  bottom: 15px;
-  left: 16px;
-  z-index: 30;
-}
-
-.mobile-progress-meta {
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 7px;
-  color: rgb(248 250 252 / 76%);
-  font-size: 11px;
-  text-shadow: 0 1px 8px rgb(0 0 0 / 75%);
-}
-
-.mobile-player-progress {
-  height: 5px;
-  overflow: hidden;
-  background: rgb(248 250 252 / 26%);
-  border-radius: 999px;
-}
-
-.mobile-player-progress div {
-  position: relative;
-  width: 46%;
-  height: 100%;
-  background: #42d7ca;
-  border-radius: inherit;
-}
-
-.mobile-player-progress div::after {
-  position: absolute;
-  top: 50%;
-  right: -5px;
-  width: 13px;
-  height: 13px;
-  content: "";
-  background: white;
-  border-radius: 50%;
-  box-shadow: 0 0 0 4px rgb(53 208 196 / 24%);
-  transform: translateY(-50%);
-}
-
-.mobile-player-info {
-  position: absolute;
-  inset: 46% 0 0;
-  display: block;
-  min-height: 0;
-  padding: 16px 16px 18px;
-  overflow: hidden;
-  color: #f4f8fb;
-  background: #11141a;
-  border-radius: 22px 22px 0 0;
-}
-
-.download-state {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  max-width: 100%;
-  width: fit-content;
-  min-height: 28px;
-  margin-bottom: 12px;
-  padding: 0 10px;
-  color: #9ba7b5;
-  font-size: 11px;
-  line-height: 1;
-  white-space: nowrap;
-  background: #292e39;
-  border-radius: 999px;
-}
-
-.mobile-player-info h3 {
-  margin: 0 0 6px;
-  font-size: 18px;
-  font-weight: 500;
-  line-height: 1.2;
-  color: #f8fafc;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.mobile-player-info p {
-  margin: 0;
-  color: #9ba7b5;
-  font-size: 12px;
-  line-height: 1.55;
-  display: -webkit-box;
-  max-width: 340px;
-  overflow: hidden;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-}
-
-.mobile-player-actions {
-  display: flex;
-  gap: 8px;
-  margin-top: 15px;
-  overflow: hidden;
-}
-
-.mobile-player-actions button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex: 0 0 auto;
-  min-width: 0;
-  height: 34px;
-  min-height: 34px;
-  padding: 0 12px;
-  color: #f4f8fb;
-  font-size: 12px;
-  white-space: nowrap;
-  background: #1d222b;
-  border: 1px solid rgb(255 255 255 / 10%);
-  border-radius: 999px;
-  gap: 6px;
-}
-
-.mobile-player-actions button .el-icon {
-  font-size: 14px;
-}
-
-.bottom-nav,
-.bottom-delete-bar {
-  position: absolute;
-  right: 0;
-  bottom: 0;
-  left: 0;
-  z-index: 50;
-  height: calc(env(safe-area-inset-bottom, 0px) + 64px);
-  padding-bottom: env(safe-area-inset-bottom, 0px);
-  background: rgb(24 27 35 / 96%);
-  border-top: 1px solid rgb(255 255 255 / 10%);
-  backdrop-filter: blur(16px);
-}
-
-.bottom-nav {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-}
-
-.bottom-nav button,
-.bottom-delete-bar button {
-  display: grid;
-  place-items: center;
-  gap: 3px;
-  color: #9ba7b5;
-  background: transparent;
-  border: 0;
-}
-
-.bottom-nav button.active {
-  color: #42d7ca;
-}
-
-.bottom-delete-bar {
-  display: grid;
-  place-items: center;
-  padding: 10px 16px calc(env(safe-area-inset-bottom, 0px) + 10px);
-}
-
-.bottom-delete-bar button {
-  display: inline-flex;
-  grid-auto-flow: column;
-  width: 100%;
-  min-height: 42px;
-  color: #ff6b72;
-  font-weight: 700;
-  background: #1d222b;
-  border: 1px solid rgb(255 255 255 / 10%);
-  border-radius: 13px;
-}
-
-.drop-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 10000;
-  display: grid;
-  place-items: center;
-  pointer-events: none;
-  background: rgb(0 0 0 / 55%);
-  border: 3px dashed #42d7ca;
-}
-
-.drop-indicator {
-  color: #fff;
-  font-size: 20px;
-  font-weight: 700;
 }
 </style>

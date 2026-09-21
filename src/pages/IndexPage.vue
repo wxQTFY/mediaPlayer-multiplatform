@@ -1,9 +1,9 @@
 <template>
   <q-page class="pc-platform-page">
-    <PcPlayerApp />
+    <AppPlatformEntry />
   </q-page>
 </template>
 
 <script setup lang="ts">
-import PcPlayerApp from '@/platforms/pc/PcPlayerApp.vue';
+import AppPlatformEntry from '@/app/AppPlatformEntry.vue';
 </script>
