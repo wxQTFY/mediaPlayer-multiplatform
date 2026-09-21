@@ -272,9 +272,8 @@ export function usePlayerWorkspace() {
     const title = getUrlTitle(url);
     selectedVideoId.value = `url-${Date.now()}`;
     await playerStore.handleOpenUrl(url);
-    if (mobilePage.value !== 'home') {
-      openMobilePlayer({ title, source: '输入地址', downloadable: isDownloadablePath(url) });
-    }
+    if (mobilePage.value !== 'player') previousMobilePage.value = mobilePage.value;
+    openMobilePlayer({ title, source: '输入地址', downloadable: isDownloadablePath(url) });
   }
 
   async function openLocalFile(): Promise<void> {

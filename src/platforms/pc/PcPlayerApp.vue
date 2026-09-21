@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import 'element-plus/dist/index.css';
 
-import { ElConfigProvider, ElMessage } from 'element-plus';
+import { ElButton, ElConfigProvider, ElInput, ElMessage, ElProgress, ElTooltip } from 'element-plus';
 import {
   CaretRight,
   Close,
@@ -76,23 +76,30 @@ const handleDownload = async (): Promise<void> => {
             <div class="library-row">
               <strong>共 {{ workspace.sidebarVideoCount.value }} 个视频</strong>
               <div class="sidebar-actions">
-                <button class="pc-icon-btn" type="button" aria-label="添加" @click="workspace.openLocalFile">
+                <ElTooltip content="添加视频" placement="bottom">
+                <ElButton class="pc-icon-btn" native-type="button" aria-label="添加" @click="workspace.openLocalFile">
                   <el-icon><Plus /></el-icon>
-                </button>
-                <button class="pc-icon-btn" type="button" aria-label="删除" @click="workspace.playerStore.deleteAllVideos">
+                </ElButton>
+                </ElTooltip>
+                <ElTooltip content="删除全部" placement="bottom">
+                <ElButton class="pc-icon-btn" native-type="button" aria-label="删除" @click="workspace.playerStore.deleteAllVideos">
                   <el-icon><Delete /></el-icon>
-                </button>
-                <button class="pc-icon-btn" type="button" aria-label="排序" @click="workspace.playerStore.toggleSortDate">
+                </ElButton>
+                </ElTooltip>
+                <ElTooltip content="按时间排序" placement="bottom">
+                <ElButton class="pc-icon-btn" native-type="button" aria-label="排序" @click="workspace.playerStore.toggleSortDate">
                   <el-icon><Sort /></el-icon>
-                </button>
+                </ElButton>
+                </ElTooltip>
               </div>
             </div>
             <label class="sidebar-search">
               <el-icon><Search /></el-icon>
-              <input
+              <ElInput
                 v-model="workspace.searchKeyword.value"
                 aria-label="搜索列表视频"
                 placeholder="搜索列表视频"
+                clearable
               />
             </label>
           </section>
@@ -126,17 +133,17 @@ const handleDownload = async (): Promise<void> => {
                 @get-duration="(duration) => workspace.playerStore.updateDuration(duration, workspace.currentVideo.value!)"
                 @playback-error="workspace.playerStore.fallbackToTranscode(workspace.currentVideo.value!)"
               />
-              <button
+              <ElButton
                 v-if="workspace.playerDownloadable.value"
                 class="floating-download"
-                type="button"
+                native-type="button"
                 aria-label="下载当前视频"
                 title="下载当前视频"
                 :disabled="workspace.isDownloading.value"
                 @click="handleDownload"
               >
                 <el-icon><Download /></el-icon>
-              </button>
+              </ElButton>
             </div>
 
             <div v-else class="desktop-home-card">
@@ -147,10 +154,10 @@ const handleDownload = async (): Promise<void> => {
                   <input v-model="workspace.urlInput.value" aria-label="输入视频地址" />
                 </label>
               </form>
-              <button class="primary-action" type="button" @click="workspace.openLocalFile">
+              <ElButton class="primary-action" native-type="button" @click="workspace.openLocalFile">
                 <el-icon><FolderOpened /></el-icon>
                 打开文件
-              </button>
+              </ElButton>
             </div>
           </section>
 
@@ -175,13 +182,13 @@ const handleDownload = async (): Promise<void> => {
             </div>
 
             <div v-if="workspace.downloadTab.value === 'downloading'" class="bulk-actions">
-              <button type="button" @click="workspace.pauseAllDownloads"><el-icon><VideoPause /></el-icon>全部暂停</button>
-              <button type="button" @click="workspace.startAllDownloads"><el-icon><CaretRight /></el-icon>全部开始</button>
-              <button class="danger" type="button" @click="workspace.deleteAllDownloads"><el-icon><Delete /></el-icon>全部删除</button>
+              <ElButton native-type="button" @click="workspace.pauseAllDownloads"><el-icon><VideoPause /></el-icon>全部暂停</ElButton>
+              <ElButton native-type="button" @click="workspace.startAllDownloads"><el-icon><CaretRight /></el-icon>全部开始</ElButton>
+              <ElButton class="danger" native-type="button" @click="workspace.deleteAllDownloads"><el-icon><Delete /></el-icon>全部删除</ElButton>
             </div>
 
             <div v-else class="bulk-actions">
-              <button class="danger" type="button" @click="workspace.clearFinishedRecords"><el-icon><Delete /></el-icon>清空全部记录</button>
+              <ElButton class="danger" native-type="button" @click="workspace.clearFinishedRecords"><el-icon><Delete /></el-icon>清空全部记录</ElButton>
             </div>
 
             <div v-if="workspace.downloadTab.value === 'downloading'" class="download-task-list">
@@ -195,17 +202,19 @@ const handleDownload = async (): Promise<void> => {
                   <span>
                     {{ task.progress }}% · {{ task.speed || '已暂停' }} · 保存到 {{ task.savePath }}{{ task.remainingTime ? ` · 剩余 ${task.remainingTime}` : '' }}
                   </span>
-                  <div class="progress">
-                    <div :style="{ width: `${task.progress}%` }"></div>
-                  </div>
+                  <ElProgress class="progress" :percentage="task.progress" :show-text="false" :stroke-width="7" color="#42d7ca" />
                 </div>
                 <div class="row-actions">
-                  <button type="button" :aria-label="task.status === 'paused' ? '开始' : '暂停'" :title="task.status === 'paused' ? '开始' : '暂停'" @click="workspace.toggleTaskStatus(task.id)">
+                  <ElTooltip :content="task.status === 'paused' ? '开始' : '暂停'" placement="top">
+                  <ElButton native-type="button" :aria-label="task.status === 'paused' ? '开始' : '暂停'" @click="workspace.toggleTaskStatus(task.id)">
                     <el-icon><component :is="task.status === 'paused' ? CaretRight : VideoPause" /></el-icon>
-                  </button>
-                  <button type="button" aria-label="删除" title="删除" @click="workspace.deleteTask(task.id)">
+                  </ElButton>
+                  </ElTooltip>
+                  <ElTooltip content="删除" placement="top">
+                  <ElButton native-type="button" aria-label="删除" @click="workspace.deleteTask(task.id)">
                     <el-icon><Delete /></el-icon>
-                  </button>
+                  </ElButton>
+                  </ElTooltip>
                 </div>
               </article>
             </div>
@@ -222,11 +231,13 @@ const handleDownload = async (): Promise<void> => {
                 <span>{{ record.size }}</span>
                 <span>{{ record.completedAt }}</span>
                 <div class="finished-actions">
-                  <button type="button" aria-label="播放" title="播放"><el-icon><CaretRight /></el-icon></button>
-                  <button type="button" aria-label="打开文件位置" title="打开文件位置"><el-icon><FolderOpened /></el-icon></button>
-                  <button class="clear" type="button" aria-label="清除" title="清除" @click="workspace.clearFinishedRecord(record.id)">
+                  <ElTooltip content="播放" placement="top"><ElButton native-type="button" aria-label="播放"><el-icon><CaretRight /></el-icon></ElButton></ElTooltip>
+                  <ElTooltip content="打开文件位置" placement="top"><ElButton native-type="button" aria-label="打开文件位置"><el-icon><FolderOpened /></el-icon></ElButton></ElTooltip>
+                  <ElTooltip content="清除" placement="top">
+                  <ElButton class="clear" native-type="button" aria-label="清除" @click="workspace.clearFinishedRecord(record.id)">
                     <el-icon><Delete /></el-icon>
-                  </button>
+                  </ElButton>
+                  </ElTooltip>
                 </div>
               </div>
             </div>
@@ -248,6 +259,15 @@ const handleDownload = async (): Promise<void> => {
   color: #f4f8fb;
   background: #171a21;
   font-family: "Microsoft YaHei", "PingFang SC", "Helvetica Neue", Arial, sans-serif;
+}
+
+.pc-player-shell :deep(.el-button + .el-button) {
+  margin-left: 0;
+}
+
+.pc-player-shell :deep(.el-button) {
+  --el-button-hover-bg-color: transparent;
+  --el-button-hover-border-color: transparent;
 }
 
 button,
@@ -457,6 +477,26 @@ button {
 .sidebar-search input::placeholder {
   color: #d5dde8;
   opacity: 1;
+}
+
+.sidebar-search :deep(.el-input) {
+  min-width: 0;
+}
+
+.sidebar-search :deep(.el-input__wrapper) {
+  padding: 0;
+  background: transparent;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.sidebar-search :deep(.el-input__inner) {
+  color: white;
+  font-size: 12px;
+}
+
+.sidebar-search :deep(.el-input__inner::placeholder) {
+  color: #d5dde8;
 }
 
 .desktop-video-list {
@@ -787,14 +827,16 @@ button {
 .progress {
   height: 7px;
   overflow: hidden;
-  background: #dfe7f0;
+  background: transparent;
   border-radius: 999px;
 }
 
-.progress div {
-  height: 100%;
+.progress :deep(.el-progress-bar__outer) {
+  background: #dfe7f0;
+}
+
+.progress :deep(.el-progress-bar__inner) {
   background: linear-gradient(90deg, #42d7ca 0%, #fcce20 72%);
-  border-radius: inherit;
 }
 
 .row-actions {
