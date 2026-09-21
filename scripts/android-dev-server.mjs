@@ -3,6 +3,12 @@ import { fileURLToPath } from 'node:url';
 
 const args = process.argv.slice(2);
 const srcCapacitorDir = fileURLToPath(new URL('../src-capacitor/', import.meta.url));
+const capacitorCliPath = fileURLToPath(
+  new URL('../src-capacitor/node_modules/@capacitor/cli/bin/capacitor', import.meta.url)
+);
+const quasarCliPath = fileURLToPath(
+  new URL('../node_modules/@quasar/app-vite/bin/quasar.js', import.meta.url)
+);
 
 const readOption = (name) => {
   const prefix = `${name}=`;
@@ -30,11 +36,9 @@ if (!devServerUrl) {
   process.exit(1);
 }
 
-const commandFor = (command) => (process.platform === 'win32' ? `${command}.cmd` : command);
-
-const run = (command, commandArgs, options = {}) =>
+const runNodeCli = (cliPath, commandArgs, options = {}) =>
   new Promise((resolve, reject) => {
-    const child = spawn(commandFor(command), commandArgs, {
+    const child = spawn(process.execPath, [cliPath, ...commandArgs], {
       stdio: 'inherit',
       env: {
         ...process.env,
@@ -46,24 +50,24 @@ const run = (command, commandArgs, options = {}) =>
     child.on('error', reject);
     child.on('exit', (code, signal) => {
       if (signal) {
-        reject(new Error(`${command} exited with signal ${signal}`));
+        reject(new Error(`${cliPath} exited with signal ${signal}`));
         return;
       }
 
-      code === 0 ? resolve() : reject(new Error(`${command} exited with code ${code}`));
+      code === 0 ? resolve() : reject(new Error(`${cliPath} exited with code ${code}`));
     });
   });
 
 console.log(`Android Capacitor dev server URL: ${devServerUrl}`);
 console.log('Syncing Android Capacitor project...');
 
-await run('npx', ['cap', 'sync', 'android'], {
+await runNodeCli(capacitorCliPath, ['sync', 'android'], {
   cwd: srcCapacitorDir
 });
 
 console.log('Starting Quasar dev server for Android emulator...');
 
-const child = spawn(commandFor('npx'), ['quasar', 'dev', '-p', port, '--hostname', '0.0.0.0'], {
+const child = spawn(process.execPath, [quasarCliPath, 'dev', '-p', port, '--hostname', '0.0.0.0'], {
   stdio: 'inherit',
   env: {
     ...process.env,
