@@ -50,9 +50,34 @@ npm run typecheck
 npm run build:spa
 npm run dev:electron
 npm run build:electron
-npm run dev:android
+npm run dev:android:emulator
 npm run build:android
 ```
+
+Android 模拟器开发预览：
+
+```bash
+npm run dev:android:emulator
+```
+
+该命令会把 Capacitor WebView 的开发服务器地址固定为 `http://10.0.2.2:9500/`。这是 Android 模拟器访问宿主机的标准地址，可避免在 WSL / Docker / OpenClaw 环境下误写成 `172.30.*.*` 这类模拟器不可达的容器网卡地址。
+
+Android 真机开发预览：
+
+```bash
+npm run dev:android:device -- --url http://<电脑局域网IP>:9500
+```
+
+真机必须和电脑在同一局域网，并且电脑防火墙允许访问 `9500` 端口。
+
+Android 不需要热更新时，优先使用内置 Web 资源同步：
+
+```bash
+npm run android:sync
+npm run android:open
+```
+
+`android:sync` 会构建前端资源并同步到 Android 工程，运行后的 App 加载内置 `index.html`，不会访问 `http://172.30.*.*:9500/`。
 
 ## 打包说明
 
