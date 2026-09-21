@@ -121,10 +121,7 @@ const handleDownload = async (): Promise<void> => {
         </aside>
 
         <main class="relative min-h-0 min-w-0 overflow-hidden">
-          <section
-            v-show="workspace.desktopView.value === 'video'"
-            class="absolute inset-0 overflow-hidden bg-[radial-gradient(circle_at_58%_42%,rgba(45,212,191,.28),transparent_18%),linear-gradient(130deg,#2233a6,#202997_32%,#14265d_58%,#101933)]"
-          >
+          <section v-show="workspace.desktopView.value === 'video'" class="pc-video-stage absolute inset-0 overflow-hidden">
             <div v-if="workspace.hasPlayingVideo.value" class="absolute inset-0 z-10 bg-black">
               <ArtPlayer
                 :key="workspace.currentVideo.value!.videoPath || 'desktop-player'"
@@ -218,9 +215,17 @@ const handleDownload = async (): Promise<void> => {
               <el-table-column prop="completedAt" label="完成时间" width="180" />
               <el-table-column label="操作" width="150" fixed="right">
                 <template #default="{ row }">
-                  <el-button :icon="CaretRight" text circle />
-                  <el-button :icon="FolderOpened" text circle />
-                  <el-button :icon="Delete" text circle type="danger" @click="workspace.clearFinishedRecord(row.id)" />
+                  <el-button :icon="CaretRight" text circle title="播放" aria-label="播放" />
+                  <el-button :icon="FolderOpened" text circle title="打开文件位置" aria-label="打开文件位置" />
+                  <el-button
+                    :icon="Delete"
+                    text
+                    circle
+                    type="danger"
+                    title="清除"
+                    aria-label="清除"
+                    @click="workspace.clearFinishedRecord(row.id)"
+                  />
                 </template>
               </el-table-column>
             </el-table>
@@ -296,6 +301,37 @@ const handleDownload = async (): Promise<void> => {
   content: attr(data-time);
   background: rgb(0 0 0 / 62%);
   border-radius: 3px;
+}
+
+.pc-video-stage {
+  background:
+    linear-gradient(180deg, rgb(7 10 18 / 18%), rgb(7 10 18 / 64%)),
+    radial-gradient(circle at 54% 42%, rgb(66 215 202 / 24%), transparent 18%),
+    linear-gradient(130deg, #2233a6 0%, #202997 30%, #14265d 58%, #101933 100%);
+}
+
+.pc-video-stage::before {
+  position: absolute;
+  top: -22%;
+  right: -18%;
+  width: 74%;
+  height: 134%;
+  content: "";
+  border: 1px solid rgb(66 215 202 / 34%);
+  border-radius: 50%;
+  box-shadow:
+    inset 22px 0 0 rgb(66 215 202 / 4%),
+    inset 44px 0 0 rgb(77 125 245 / 5%);
+  transform: rotate(-14deg);
+}
+
+.pc-video-stage::after {
+  position: absolute;
+  inset: 0;
+  content: "";
+  pointer-events: none;
+  opacity: 0.56;
+  background: repeating-radial-gradient(circle at 78% 16%, transparent 0 13px, rgb(66 215 202 / 20%) 14px, transparent 15px);
 }
 
 .pc-download-tab {

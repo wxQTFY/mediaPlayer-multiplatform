@@ -119,7 +119,7 @@ const handleDownload = async (): Promise<void> => {
         </VanTabs>
 
         <div v-if="workspace.downloadTab.value === 'downloading'" class="overflow-auto rounded-3xl bg-white p-4">
-          <div class="mb-4 flex gap-2">
+          <div class="mb-4 flex flex-wrap gap-2">
             <VanButton size="small" round icon="pause-circle-o" @click="workspace.pauseAllDownloads">全部暂停</VanButton>
             <VanButton size="small" round icon="play-circle-o" @click="workspace.startAllDownloads">全部开始</VanButton>
             <VanButton size="small" round type="danger" plain icon="delete-o" @click="workspace.deleteAllDownloads">全部删除</VanButton>
@@ -141,11 +141,15 @@ const handleDownload = async (): Promise<void> => {
           <div class="mb-4 flex justify-end">
             <VanButton size="small" type="danger" plain round icon="delete-o" @click="workspace.clearFinishedRecords">清空记录</VanButton>
           </div>
-          <article v-for="record in workspace.finishedRecords.value" :key="record.id" class="grid grid-cols-[minmax(0,1fr)_120px_180px_auto] items-center gap-4 border-b border-slate-100 py-4">
+          <article v-for="record in workspace.finishedRecords.value" :key="record.id" class="grid grid-cols-[minmax(0,1fr)_120px_180px_132px] items-center gap-4 border-b border-slate-100 py-4">
             <strong class="truncate text-sm">{{ record.title }}</strong>
             <span class="text-sm text-slate-500">{{ record.size }}</span>
             <span class="text-sm text-slate-500">{{ record.completedAt }}</span>
-            <VanButton size="small" round icon="delete-o" @click="workspace.clearFinishedRecord(record.id)" />
+            <div class="flex justify-end gap-2">
+              <VanButton size="small" round icon="play-circle-o" title="播放" />
+              <VanButton size="small" round icon="folder-o" title="打开文件位置" />
+              <VanButton size="small" round type="danger" plain icon="delete-o" title="清除" @click="workspace.clearFinishedRecord(record.id)" />
+            </div>
           </article>
         </div>
       </section>

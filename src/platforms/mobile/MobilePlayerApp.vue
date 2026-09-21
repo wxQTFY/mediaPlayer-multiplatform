@@ -8,7 +8,6 @@ import {
   Icon as VanIcon,
   NavBar as VanNavBar,
   Progress as VanProgress,
-  Search as VanSearch,
   Tab as VanTab,
   Tabs as VanTabs,
   Toast,
@@ -46,14 +45,11 @@ const handleDownload = async (): Promise<void> => {
         </div>
       </div>
 
-      <form class="px-3 pt-3" @submit.prevent="workspace.submitUrl">
-        <VanSearch
-          v-model="workspace.urlInput.value"
-          shape="round"
-          background="transparent"
-          placeholder="输入视频地址"
-          @search="workspace.submitUrl"
-        />
+      <form class="mobile-url-row" @submit.prevent="workspace.submitUrl">
+        <input v-model="workspace.urlInput.value" aria-label="输入视频地址" placeholder="输入视频地址" />
+        <button type="submit" aria-label="搜索并播放">
+          <VanIcon name="search" />
+        </button>
       </form>
 
       <div class="flex items-center justify-between px-4 py-2 text-sm">
@@ -63,7 +59,10 @@ const handleDownload = async (): Promise<void> => {
         </span>
       </div>
 
-      <div class="mx-4 mb-3 grid grid-cols-3 gap-2 rounded-2xl border border-white/10 bg-slate-800 p-2">
+      <div
+        class="mx-4 mb-3 grid gap-2 rounded-2xl border border-white/10 bg-slate-800 p-2"
+        :class="workspace.homeSelecting.value ? 'grid-cols-3' : 'grid-cols-1'"
+      >
         <VanButton size="small" round icon="delete-o" @click="workspace.startHomeSelection">批量删除</VanButton>
         <VanButton v-if="workspace.homeSelecting.value" size="small" round @click="workspace.selectAllHomeVideos">全选</VanButton>
         <VanButton v-if="workspace.homeSelecting.value" size="small" round @click="workspace.cancelHomeSelection">取消</VanButton>
@@ -107,9 +106,9 @@ const handleDownload = async (): Promise<void> => {
       </VanTabs>
 
       <div v-if="workspace.downloadTab.value === 'downloading'" class="mx-4 mt-3 grid grid-cols-3 gap-2">
-        <VanButton size="small" round icon="pause-circle-o" @click="workspace.pauseAllDownloads">暂停</VanButton>
-        <VanButton size="small" round icon="play-circle-o" @click="workspace.startAllDownloads">开始</VanButton>
-        <VanButton size="small" round type="danger" plain icon="delete-o" @click="workspace.deleteAllDownloads">删除</VanButton>
+        <VanButton size="small" round icon="pause-circle-o" @click="workspace.pauseAllDownloads">全部暂停</VanButton>
+        <VanButton size="small" round icon="play-circle-o" @click="workspace.startAllDownloads">全部开始</VanButton>
+        <VanButton size="small" round type="danger" plain icon="delete-o" @click="workspace.deleteAllDownloads">全部删除</VanButton>
       </div>
 
       <div v-if="workspace.downloadTab.value === 'downloading'" class="grid gap-3 overflow-auto px-4 py-4 pb-24">
@@ -247,6 +246,39 @@ const handleDownload = async (): Promise<void> => {
   place-items: center;
   color: #061d1b;
   background: #42d7ca;
+  border-radius: 12px;
+}
+
+.mobile-url-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 40px;
+  gap: 8px;
+  margin: 12px 16px 12px;
+}
+
+.mobile-url-row input {
+  min-width: 0;
+  height: 40px;
+  padding: 0 12px;
+  color: white;
+  background: #1d222b;
+  border: 1px solid rgb(255 255 255 / 10%);
+  border-radius: 12px;
+  outline: 0;
+}
+
+.mobile-url-row input::placeholder {
+  color: #9ba7b5;
+}
+
+.mobile-url-row button {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  color: #061d1b;
+  background: #42d7ca;
+  border: 0;
   border-radius: 12px;
 }
 
