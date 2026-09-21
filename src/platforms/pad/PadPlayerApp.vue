@@ -22,8 +22,8 @@ const handleDownload = async (): Promise<void> => {
 </script>
 
 <template>
-  <section class="grid h-screen w-screen grid-cols-[320px_minmax(0,1fr)] overflow-hidden bg-[#10141d] text-slate-50">
-    <aside class="grid min-h-0 grid-rows-[auto_auto_minmax(0,1fr)_auto] border-r border-white/10 bg-[#151a23]">
+  <section class="pad-player-shell bg-[#10141d] text-slate-50">
+    <aside class="pad-sidebar grid border-r border-white/10 bg-[#151a23]">
       <header class="flex items-center justify-between border-b border-white/10 px-5 py-4">
         <div class="flex items-center gap-3">
           <span class="grid h-10 w-10 place-items-center rounded-2xl bg-teal-300 text-slate-950"><VanIcon name="play" /></span>
@@ -77,7 +77,7 @@ const handleDownload = async (): Promise<void> => {
     </aside>
 
     <main class="relative min-h-0 min-w-0 overflow-hidden">
-      <section v-show="workspace.desktopView.value === 'video'" class="absolute inset-0 grid grid-rows-[minmax(0,1fr)_auto] bg-slate-950">
+      <section v-show="workspace.desktopView.value === 'video'" class="pad-video-view absolute inset-0 bg-slate-950">
         <div class="relative min-h-0">
           <ArtPlayer
             v-if="workspace.currentVideo.value?.videoPath"
@@ -112,7 +112,7 @@ const handleDownload = async (): Promise<void> => {
         </footer>
       </section>
 
-      <section v-show="workspace.desktopView.value === 'downloads'" class="absolute inset-0 grid grid-rows-[auto_minmax(0,1fr)] gap-4 overflow-hidden bg-slate-100 p-6 text-slate-900">
+      <section v-show="workspace.desktopView.value === 'downloads'" class="pad-downloads-view absolute inset-0 gap-4 overflow-hidden bg-slate-100 p-6 text-slate-900">
         <VanTabs v-model:active="workspace.downloadTab.value" shrink>
           <VanTab name="downloading" :title="`下载中(${workspace.downloadTasks.value.length})`" />
           <VanTab name="finished" :title="`已完成(${workspace.finishedRecords.value.length})`" />
@@ -158,6 +158,36 @@ const handleDownload = async (): Promise<void> => {
 </template>
 
 <style scoped>
+.pad-player-shell {
+  display: grid;
+  grid-template-columns: 320px minmax(0, 1fr);
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.pad-sidebar {
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.pad-video-view {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  min-width: 0;
+  min-height: 0;
+}
+
+.pad-downloads-view {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  min-width: 0;
+  min-height: 0;
+}
+
 .pad-thumb {
   position: relative;
   width: 96px;

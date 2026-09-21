@@ -42,7 +42,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="h-screen w-screen overflow-hidden bg-slate-950 text-slate-50">
+  <div class="app-platform-entry bg-slate-950 text-slate-50">
     <PcPlayerApp v-if="platform === 'pc'" />
     <PadPlayerApp v-else-if="platform === 'pad'" />
     <MobilePlayerApp v-else />
@@ -57,3 +57,12 @@ onBeforeUnmount(() => {
     </div>
   </div>
 </template>
+
+<style scoped>
+.app-platform-entry {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+</style>

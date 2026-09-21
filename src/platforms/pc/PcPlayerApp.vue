@@ -32,8 +32,8 @@ const handleDownload = async (): Promise<void> => {
 
 <template>
   <el-config-provider>
-    <section class="grid h-screen w-screen grid-rows-[60px_minmax(0,1fr)] overflow-hidden bg-[#171a21] text-slate-50">
-      <header class="flex items-center justify-between border-b border-white/10 bg-[#1b1f28] px-5">
+    <section class="pc-player-shell bg-[#171a21] text-slate-50">
+      <header class="pc-titlebar flex items-center justify-between border-b border-white/10 bg-[#1b1f28] px-5">
         <div class="flex items-center gap-3 text-xl font-semibold">
           <span class="grid h-9 w-9 place-items-center rounded-xl bg-teal-300 text-slate-950">
             <el-icon><CaretRight /></el-icon>
@@ -53,8 +53,8 @@ const handleDownload = async (): Promise<void> => {
         </div>
       </header>
 
-      <div class="grid min-h-0 grid-cols-[260px_minmax(0,1fr)]">
-        <aside class="grid min-h-0 grid-rows-[58px_auto_minmax(0,1fr)] border-r border-white/10 bg-[#11141a]">
+      <div class="pc-body">
+        <aside class="pc-sidebar grid border-r border-white/10 bg-[#11141a]">
           <nav class="grid grid-cols-2 gap-2 border-b border-white/10 p-3">
             <button
               class="pc-tab"
@@ -120,7 +120,7 @@ const handleDownload = async (): Promise<void> => {
           </section>
         </aside>
 
-        <main class="relative min-h-0 min-w-0 overflow-hidden">
+        <main class="pc-main">
           <section v-show="workspace.desktopView.value === 'video'" class="pc-video-stage absolute inset-0 overflow-hidden">
             <div v-if="workspace.hasPlayingVideo.value" class="absolute inset-0 z-10 bg-black">
               <ArtPlayer
@@ -154,7 +154,7 @@ const handleDownload = async (): Promise<void> => {
             </div>
           </section>
 
-          <section v-show="workspace.desktopView.value === 'downloads'" class="absolute inset-0 grid grid-rows-[auto_auto_minmax(0,1fr)] gap-5 overflow-auto bg-slate-50 p-8 text-slate-900">
+          <section v-show="workspace.desktopView.value === 'downloads'" class="pc-downloads-view absolute inset-0 gap-5 overflow-auto bg-slate-50 p-8 text-slate-900">
             <div class="flex gap-8 text-base font-medium">
               <button
                 class="pc-download-tab"
@@ -237,6 +237,54 @@ const handleDownload = async (): Promise<void> => {
 </template>
 
 <style scoped>
+.pc-player-shell {
+  display: grid;
+  grid-template-rows: 60px minmax(0, 1fr);
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.pc-titlebar {
+  min-height: 0;
+  -webkit-app-region: drag;
+  user-select: none;
+}
+
+.pc-titlebar button {
+  -webkit-app-region: no-drag;
+}
+
+.pc-body {
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr);
+  min-width: 0;
+  min-height: 0;
+}
+
+.pc-sidebar {
+  grid-template-rows: 58px auto minmax(0, 1fr);
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.pc-main {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.pc-downloads-view {
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  min-width: 0;
+  min-height: 0;
+  z-index: 4;
+}
+
 .pc-window-btn,
 .pc-icon-btn {
   display: grid;

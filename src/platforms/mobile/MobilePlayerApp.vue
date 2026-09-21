@@ -25,7 +25,7 @@ const handleDownload = async (): Promise<void> => {
 </script>
 
 <template>
-  <section class="relative h-screen w-screen overflow-hidden bg-[#11141a] text-slate-50">
+  <section class="mobile-player-shell bg-[#11141a] text-slate-50">
     <section v-show="workspace.mobilePage.value === 'home'" class="mobile-page">
       <VanNavBar title="首页" class="mobile-nav">
         <template #left>
@@ -226,6 +226,14 @@ const handleDownload = async (): Promise<void> => {
 </template>
 
 <style scoped>
+.mobile-player-shell {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
 .mobile-page {
   position: absolute;
   inset: 0 0 calc(env(safe-area-inset-bottom, 0px) + 64px);
