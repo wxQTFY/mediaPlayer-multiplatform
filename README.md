@@ -60,7 +60,9 @@ Android 模拟器开发预览：
 npm run dev:android:emulator
 ```
 
-该命令会把 Capacitor WebView 的开发服务器地址固定为 `http://10.0.2.2:9500/`。这是 Android 模拟器访问宿主机的标准地址，可避免在 WSL / Docker / OpenClaw 环境下误写成 `172.30.*.*` 这类模拟器不可达的容器网卡地址。
+先启动 Android 模拟器，再运行该命令。脚本会执行 `adb reverse tcp:9500 tcp:9500`，并把 Capacitor WebView 的开发服务器地址写为 `http://127.0.0.1:9500/`。这比依赖 `10.0.2.2` 更稳，可避免在 WSL / Docker / OpenClaw 或多网卡环境下误写成 `172.30.*.*` 这类模拟器不可达的地址。
+
+如果命令提示找不到 `adb`，请确认 Android Studio 的 SDK platform-tools 已加入 PATH，或设置 `ANDROID_HOME` / `ANDROID_SDK_ROOT`。
 
 Android 真机开发预览：
 
