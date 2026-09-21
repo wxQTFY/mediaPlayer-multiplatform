@@ -58,20 +58,20 @@ const sampleVideos: DisplayVideo[] = [
     downloadable: true
   },
   {
-    id: 'video-live-replay',
-    title: '直播回放片段.m3u8',
-    source: '流媒体',
-    duration: '41:08',
-    quality: '自动',
-    downloadable: false
-  },
-  {
     id: 'video-product-demo',
     title: '产品演示短片.mp4',
     source: '网络地址',
     duration: '12:20',
     quality: '720P',
     downloadable: true
+  },
+  {
+    id: 'video-live-replay',
+    title: '直播回放片段.m3u8',
+    source: '流媒体',
+    duration: '41:08',
+    quality: '自动',
+    downloadable: false
   }
 ];
 
