@@ -45,6 +45,7 @@ const playerTitle = computed(() => {
 
 const playerSource = computed(() => workspace.selectedVideo.value?.source || '输入地址');
 const playerDuration = computed(() => workspace.selectedVideo.value?.duration || '29:32');
+const isNativeMobileShell = typeof window !== 'undefined' && Boolean(window.Capacitor);
 
 const icon = (name: keyof typeof iconPaths): string => {
   return `<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">${iconPaths[name]}</svg>`;
@@ -63,8 +64,8 @@ const handleDownload = async (): Promise<void> => {
 </script>
 
 <template>
-  <section class="mobile-player-shell">
-    <div class="mobile-status" :class="{ 'on-video': workspace.mobilePage.value === 'player' }">
+  <section class="mobile-player-shell" :class="{ 'native-shell': isNativeMobileShell }">
+    <div v-if="!isNativeMobileShell" class="mobile-status" :class="{ 'on-video': workspace.mobilePage.value === 'player' }">
       <span>9:41</span>
       <span class="status-dots"><span></span><span></span></span>
     </div>
@@ -380,6 +381,10 @@ const handleDownload = async (): Promise<void> => {
   inset: 34px 0 64px;
   overflow: hidden;
   background: var(--screen);
+}
+
+.mobile-player-shell.native-shell .mobile-page {
+  inset: 0 0 64px;
 }
 
 .app-bar {
